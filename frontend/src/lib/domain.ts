@@ -1,5 +1,6 @@
 export type Severity = 'deny' | 'warning';
 export type RegionState = 'pending' | 'writing' | 'valid' | 'corrupt' | 'read-error' | 'write-error';
+export type VerificationOutcome = 'written' | 'verified' | 'corrupt' | 'read-error' | 'write-error';
 
 export interface SafetyReason { code: string; severity: Severity; message: string }
 export interface RawTestDecision { allowed: boolean; reasons?: SafetyReason[] }
@@ -8,7 +9,8 @@ export interface DeviceCard {
   transport?: string; capacityBytes: number; mountPoints: string[]; fileSystems: string[];
   readOnly: boolean; systemDisk: boolean; likelyExternal: boolean; rawTest: RawTestDecision;
 }
-export interface RegionCell { index: number; state: RegionState }
+export interface RegionCell { index: number; state: RegionState; message?: string }
+export interface RegionProgressLike { phase: 'write' | 'verify'; outcome: VerificationOutcome; error?: string }
 export interface ProgressLike { phase: 'write' | 'verify'; bytesCompleted: number; bytesTotal: number }
 
 export function formatBytes(value: number): string {
@@ -37,9 +39,19 @@ export function createRegionCells(total: number): RegionCell[] {
   return Array.from({ length: total }, (_, index) => ({ index, state: 'pending' as const }));
 }
 
-export function updateRegion(cells: RegionCell[], index: number, state: RegionState): RegionCell[] {
+export function updateRegion(cells: RegionCell[], index: number, state: RegionState, message?: string): RegionCell[] {
   if (index < 0 || index >= cells.length) return cells;
-  return cells.map((cell) => cell.index === index ? { ...cell, state } : cell);
+  return cells.map((cell) => cell.index === index ? { ...cell, state, message } : cell);
+}
+
+export function regionStateForProgress(progress: RegionProgressLike): RegionState {
+  switch (progress.outcome) {
+    case 'written': return 'writing';
+    case 'verified': return 'valid';
+    case 'corrupt': return 'corrupt';
+    case 'read-error': return 'read-error';
+    case 'write-error': return 'write-error';
+  }
 }
 
 export function overallProgress(progress: ProgressLike | undefined): number {

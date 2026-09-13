@@ -21,6 +21,33 @@ const (
 	PhaseVerify Phase = "verify"
 )
 
+type RegionOutcome string
+
+const (
+	RegionWritten    RegionOutcome = "written"
+	RegionVerified   RegionOutcome = "verified"
+	RegionCorrupt    RegionOutcome = "corrupt"
+	RegionReadError  RegionOutcome = "read-error"
+	RegionWriteError RegionOutcome = "write-error"
+)
+
+type RegionFailureKind string
+
+const (
+	FailureCorrupt RegionFailureKind = "corrupt"
+	FailureRead    RegionFailureKind = "read-error"
+	FailureWrite   RegionFailureKind = "write-error"
+)
+
+type RegionError struct {
+	Region int
+	Kind   RegionFailureKind
+	Err    error
+}
+
+func (e *RegionError) Error() string { return fmt.Sprintf("region %d %s: %v", e.Region, e.Kind, e.Err) }
+func (e *RegionError) Unwrap() error { return e.Err }
+
 type Config struct {
 	Root       string
 	TotalBytes int64
@@ -29,11 +56,13 @@ type Config struct {
 }
 
 type Progress struct {
-	Phase          Phase `json:"phase"`
-	Region         int   `json:"region"`
-	RegionsTotal   int   `json:"regionsTotal"`
-	BytesCompleted int64 `json:"bytesCompleted"`
-	BytesTotal     int64 `json:"bytesTotal"`
+	Phase          Phase         `json:"phase"`
+	Region         int           `json:"region"`
+	RegionsTotal   int           `json:"regionsTotal"`
+	BytesCompleted int64         `json:"bytesCompleted"`
+	BytesTotal     int64         `json:"bytesTotal"`
+	Outcome        RegionOutcome `json:"outcome"`
+	Error          string        `json:"error,omitempty"`
 }
 
 type Report struct {
@@ -44,15 +73,16 @@ type Report struct {
 
 type Engine struct {
 	afterWrite func(testDir string) error
+	write      func(string, [32]byte, int, int64) error
+	verify     func(string, [32]byte, int, int64) error
 }
 
-func New() *Engine { return &Engine{} }
+func New() *Engine { return &Engine{write: writeRegion, verify: verifyRegion} }
 
 func (e *Engine) Run(ctx context.Context, cfg Config, progress func(Progress)) (report Report, err error) {
 	if err := validateConfig(cfg); err != nil {
 		return Report{}, err
 	}
-
 	testDir, err := os.MkdirTemp(cfg.Root, ".storverity-")
 	if err != nil {
 		return Report{}, fmt.Errorf("create test directory: %w", err)
@@ -65,6 +95,14 @@ func (e *Engine) Run(ctx context.Context, cfg Config, progress func(Progress)) (
 
 	regions := regionCount(cfg.TotalBytes, cfg.ChunkBytes)
 	report.Regions = regions
+	writeFn := e.write
+	if writeFn == nil {
+		writeFn = writeRegion
+	}
+	verifyFn := e.verify
+	if verifyFn == nil {
+		verifyFn = verifyRegion
+	}
 
 	for region := 0; region < regions; region++ {
 		if err := ctx.Err(); err != nil {
@@ -72,11 +110,13 @@ func (e *Engine) Run(ctx context.Context, cfg Config, progress func(Progress)) (
 		}
 		size := regionSize(cfg.TotalBytes, cfg.ChunkBytes, region)
 		path := filepath.Join(testDir, fmt.Sprintf("region-%06d.bin", region))
-		if err := writeRegion(path, cfg.Seed, region, size); err != nil {
-			return report, err
+		if err := writeFn(path, cfg.Seed, region, size); err != nil {
+			failure := &RegionError{Region: region, Kind: FailureWrite, Err: err}
+			emit(progress, Progress{Phase: PhaseWrite, Region: region, RegionsTotal: regions, BytesCompleted: report.BytesWritten, BytesTotal: cfg.TotalBytes, Outcome: RegionWriteError, Error: failure.Error()})
+			return report, failure
 		}
 		report.BytesWritten += size
-		emit(progress, Progress{Phase: PhaseWrite, Region: region, RegionsTotal: regions, BytesCompleted: report.BytesWritten, BytesTotal: cfg.TotalBytes})
+		emit(progress, Progress{Phase: PhaseWrite, Region: region, RegionsTotal: regions, BytesCompleted: report.BytesWritten, BytesTotal: cfg.TotalBytes, Outcome: RegionWritten})
 	}
 
 	if e.afterWrite != nil {
@@ -91,11 +131,19 @@ func (e *Engine) Run(ctx context.Context, cfg Config, progress func(Progress)) (
 		}
 		size := regionSize(cfg.TotalBytes, cfg.ChunkBytes, region)
 		path := filepath.Join(testDir, fmt.Sprintf("region-%06d.bin", region))
-		if err := verifyRegion(path, cfg.Seed, region, size); err != nil {
-			return report, err
+		if err := verifyFn(path, cfg.Seed, region, size); err != nil {
+			kind := FailureRead
+			outcome := RegionReadError
+			if errors.Is(err, ErrCorrupt) {
+				kind = FailureCorrupt
+				outcome = RegionCorrupt
+			}
+			failure := &RegionError{Region: region, Kind: kind, Err: err}
+			emit(progress, Progress{Phase: PhaseVerify, Region: region, RegionsTotal: regions, BytesCompleted: report.BytesVerified, BytesTotal: cfg.TotalBytes, Outcome: outcome, Error: failure.Error()})
+			return report, failure
 		}
 		report.BytesVerified += size
-		emit(progress, Progress{Phase: PhaseVerify, Region: region, RegionsTotal: regions, BytesCompleted: report.BytesVerified, BytesTotal: cfg.TotalBytes})
+		emit(progress, Progress{Phase: PhaseVerify, Region: region, RegionsTotal: regions, BytesCompleted: report.BytesVerified, BytesTotal: cfg.TotalBytes, Outcome: RegionVerified})
 	}
 
 	return report, nil
@@ -124,9 +172,7 @@ func validateConfig(cfg Config) error {
 	return nil
 }
 
-func regionCount(total, chunk int64) int {
-	return int((total + chunk - 1) / chunk)
-}
+func regionCount(total, chunk int64) int { return int((total + chunk - 1) / chunk) }
 
 func regionSize(total, chunk int64, region int) int64 {
 	start := int64(region) * chunk
@@ -142,7 +188,6 @@ func writeRegion(path string, seed [32]byte, region int, size int64) error {
 	if err != nil {
 		return fmt.Errorf("create region %d: %w", region, err)
 	}
-
 	if _, err := io.CopyN(f, newPatternReader(seed, region), size); err != nil {
 		_ = f.Close()
 		return fmt.Errorf("write region %d: %w", region, err)

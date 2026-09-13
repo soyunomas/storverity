@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  canVerifyFilesystem, createRegionCells, formatBytes, overallProgress,
+  canVerifyFilesystem, createRegionCells, formatBytes, overallProgress, regionStateForProgress,
   safetyLabel, updateRegion, type DeviceCard,
 } from '../src/lib/domain.ts';
 
@@ -30,12 +30,20 @@ test('filesystem verification requires mounted external writable media', () => {
   assert.equal(canVerifyFilesystem({ ...base, mountPoints: ['/media/USB'], likelyExternal: false }), false);
 });
 
-test('region reducer creates immutable state transitions', () => {
+test('region reducer creates immutable state transitions and stores failure detail', () => {
   const cells = createRegionCells(3);
-  const next = updateRegion(cells, 1, 'valid');
+  const next = updateRegion(cells, 1, 'read-error', 'short read');
   assert.equal(cells[1].state, 'pending');
-  assert.equal(next[1].state, 'valid');
+  assert.deepEqual(next[1], { index: 1, state: 'read-error', message: 'short read' });
   assert.strictEqual(updateRegion(next, 9, 'corrupt'), next);
+});
+
+test('typed verification outcomes map to region states', () => {
+  assert.equal(regionStateForProgress({ phase: 'write', outcome: 'written' }), 'writing');
+  assert.equal(regionStateForProgress({ phase: 'verify', outcome: 'verified' }), 'valid');
+  assert.equal(regionStateForProgress({ phase: 'verify', outcome: 'corrupt' }), 'corrupt');
+  assert.equal(regionStateForProgress({ phase: 'verify', outcome: 'read-error' }), 'read-error');
+  assert.equal(regionStateForProgress({ phase: 'write', outcome: 'write-error' }), 'write-error');
 });
 
 test('overall progress combines write and verify phases', () => {

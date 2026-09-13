@@ -1,4 +1,4 @@
-import type { DeviceCard } from './domain';
+import type { DeviceCard, VerificationOutcome } from './domain';
 
 export interface VerificationRequest {
   deviceId: string;
@@ -13,6 +13,8 @@ export interface VerificationProgress {
   regionsTotal: number;
   bytesCompleted: number;
   bytesTotal: number;
+  outcome: VerificationOutcome;
+  error?: string;
 }
 
 export interface VerificationReport {

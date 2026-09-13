@@ -34,7 +34,7 @@ func TestVerificationControllerRefreshesIdentityAndRunsMountedExternalDevice(t *
 	}}}
 	engine := &fakeVerifier{
 		report:   verifyfs.Report{BytesWritten: 128, BytesVerified: 128, Regions: 2},
-		progress: []verifyfs.Progress{{Phase: verifyfs.PhaseWrite, Region: 0, RegionsTotal: 2, BytesCompleted: 64, BytesTotal: 128}},
+		progress: []verifyfs.Progress{{Phase: verifyfs.PhaseWrite, Region: 0, RegionsTotal: 2, BytesCompleted: 64, BytesTotal: 128, Outcome: verifyfs.RegionWritten}},
 	}
 	controller := NewVerificationController(source, engine)
 	controller.seed = func() ([32]byte, error) { var s [32]byte; s[0] = 7; return s, nil }
@@ -55,7 +55,7 @@ func TestVerificationControllerRefreshesIdentityAndRunsMountedExternalDevice(t *
 	if report.Regions != 2 {
 		t.Fatalf("report=%+v", report)
 	}
-	if want := []VerificationProgress{{Phase: verifyfs.PhaseWrite, Region: 0, RegionsTotal: 2, BytesCompleted: 64, BytesTotal: 128}}; !reflect.DeepEqual(events, want) {
+	if want := []VerificationProgress{{Phase: verifyfs.PhaseWrite, Region: 0, RegionsTotal: 2, BytesCompleted: 64, BytesTotal: 128, Outcome: verifyfs.RegionWritten}}; !reflect.DeepEqual(events, want) {
 		t.Fatalf("events=%+v want=%+v", events, want)
 	}
 }

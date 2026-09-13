@@ -5,7 +5,7 @@
     type VerificationProgress, type VerificationReport,
   } from './lib/backend';
   import {
-    canVerifyFilesystem, createRegionCells, formatBytes, overallProgress,
+    canVerifyFilesystem, createRegionCells, formatBytes, overallProgress, regionStateForProgress,
     safetyLabel, updateRegion, type DeviceCard, type RegionCell,
   } from './lib/domain';
 
@@ -54,6 +54,11 @@
     regions = [];
   }
 
+  function regionTitle(region: RegionCell): string {
+    const base = `Region ${region.index + 1}: ${region.state}`;
+    return region.message ? `${base} — ${region.message}` : base;
+  }
+
   async function refresh() {
     loading = true;
     loadError = '';
@@ -76,7 +81,7 @@
   function receiveProgress(next: VerificationProgress) {
     progress = next;
     if (regions.length !== next.regionsTotal) regions = createRegionCells(next.regionsTotal);
-    regions = updateRegion(regions, next.region, next.phase === 'write' ? 'writing' : 'valid');
+    regions = updateRegion(regions, next.region, regionStateForProgress(next), next.error);
   }
 
   function startTimer() {
@@ -241,7 +246,7 @@
             {#if regions.length > 0}
               <div class="region-grid" aria-label="Verification region map">
                 {#each regions as region}
-                  <span class={`region ${region.state}`} title={`Region ${region.index + 1}: ${region.state}`}></span>
+                  <span class={`region ${region.state}`} title={regionTitle(region)}></span>
                 {/each}
               </div>
             {:else}

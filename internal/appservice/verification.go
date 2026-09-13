@@ -28,11 +28,13 @@ type VerificationRequest struct {
 }
 
 type VerificationProgress struct {
-	Phase          verifyfs.Phase `json:"phase"`
-	Region         int            `json:"region"`
-	RegionsTotal   int            `json:"regionsTotal"`
-	BytesCompleted int64          `json:"bytesCompleted"`
-	BytesTotal     int64          `json:"bytesTotal"`
+	Phase          verifyfs.Phase         `json:"phase"`
+	Region         int                    `json:"region"`
+	RegionsTotal   int                    `json:"regionsTotal"`
+	BytesCompleted int64                  `json:"bytesCompleted"`
+	BytesTotal     int64                  `json:"bytesTotal"`
+	Outcome        verifyfs.RegionOutcome `json:"outcome"`
+	Error          string                 `json:"error,omitempty"`
 }
 
 type VerificationController struct {

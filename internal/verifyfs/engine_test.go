@@ -3,6 +3,7 @@ package verifyfs
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,10 +28,20 @@ func TestRunWritesVerifiesAndCleansUp(t *testing.T) {
 	if len(events) != 6 {
 		t.Fatalf("events = %d, want 6", len(events))
 	}
+	for i := 0; i < 3; i++ {
+		if events[i].Outcome != RegionWritten {
+			t.Fatalf("events[%d].Outcome = %q, want %q", i, events[i].Outcome, RegionWritten)
+		}
+	}
+	for i := 3; i < 6; i++ {
+		if events[i].Outcome != RegionVerified {
+			t.Fatalf("events[%d].Outcome = %q, want %q", i, events[i].Outcome, RegionVerified)
+		}
+	}
 	assertNoTestDirs(t, root)
 }
 
-func TestRunDetectsCorruptionAndCleansUp(t *testing.T) {
+func TestRunDetectsCorruptionAndEmitsTypedFailure(t *testing.T) {
 	root := t.TempDir()
 	engine := New()
 	engine.afterWrite = func(testDir string) error {
@@ -46,9 +57,72 @@ func TestRunDetectsCorruptionAndCleansUp(t *testing.T) {
 		return f.Sync()
 	}
 
-	_, err := engine.Run(context.Background(), Config{Root: root, TotalBytes: 128_000, ChunkBytes: 64_000}, nil)
+	var events []Progress
+	_, err := engine.Run(context.Background(), Config{Root: root, TotalBytes: 128_000, ChunkBytes: 64_000}, func(p Progress) {
+		events = append(events, p)
+	})
 	if !errors.Is(err, ErrCorrupt) {
 		t.Fatalf("Run() error = %v, want ErrCorrupt", err)
+	}
+	var regionErr *RegionError
+	if !errors.As(err, &regionErr) || regionErr.Region != 1 || regionErr.Kind != FailureCorrupt {
+		t.Fatalf("Run() region error = %+v, want region 1 corruption", regionErr)
+	}
+	last := events[len(events)-1]
+	if last.Region != 1 || last.Outcome != RegionCorrupt || last.Error == "" {
+		t.Fatalf("last progress = %+v, want typed corruption", last)
+	}
+	assertNoTestDirs(t, root)
+}
+
+func TestRunEmitsTypedWriteFailure(t *testing.T) {
+	root := t.TempDir()
+	engine := New()
+	original := engine.write
+	engine.write = func(path string, seed [32]byte, region int, size int64) error {
+		if region == 1 {
+			return errors.New("injected write failure")
+		}
+		return original(path, seed, region, size)
+	}
+
+	var events []Progress
+	_, err := engine.Run(context.Background(), Config{Root: root, TotalBytes: 128_000, ChunkBytes: 64_000}, func(p Progress) {
+		events = append(events, p)
+	})
+	var regionErr *RegionError
+	if !errors.As(err, &regionErr) || regionErr.Region != 1 || regionErr.Kind != FailureWrite {
+		t.Fatalf("Run() region error = %+v, want region 1 write failure", regionErr)
+	}
+	last := events[len(events)-1]
+	if last.Region != 1 || last.Outcome != RegionWriteError || last.BytesCompleted != 64_000 || last.Error == "" {
+		t.Fatalf("last progress = %+v, want typed write failure", last)
+	}
+	assertNoTestDirs(t, root)
+}
+
+func TestRunEmitsTypedReadFailure(t *testing.T) {
+	root := t.TempDir()
+	engine := New()
+	original := engine.verify
+	engine.verify = func(path string, seed [32]byte, region int, size int64) error {
+		if region == 1 {
+			return io.ErrUnexpectedEOF
+		}
+		return original(path, seed, region, size)
+	}
+
+	var events []Progress
+	_, err := engine.Run(context.Background(), Config{Root: root, TotalBytes: 128_000, ChunkBytes: 64_000}, func(p Progress) {
+		events = append(events, p)
+	})
+	var regionErr *RegionError
+	if !errors.As(err, &regionErr) || regionErr.Region != 1 || regionErr.Kind != FailureRead {
+		t.Fatalf("Run() region error = %+v, want region 1 read failure", regionErr)
+	}
+	last := events[len(events)-1]
+	if last.Region != 1 || last.Outcome != RegionReadError || last.BytesCompleted != 64_000 || last.Error == "" {
+		t.Fatalf("last progress = %+v, want typed read failure", last)
 	}
 	assertNoTestDirs(t, root)
 }
