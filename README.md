@@ -12,6 +12,7 @@ StorVerity is a Linux-first storage verification tool for detecting fake-capacit
 - Flag disks containing swap.
 - Evaluate whether a disk is eligible for a future raw destructive test, with explicit deny/warning reasons.
 - Expose discovery and safety information through a temporary JSON CLI.
+- Non-destructive filesystem verification core with deterministic region data, `fsync`, read-back verification, cancellation, progress events, and cleanup.
 
 ```bash
 go test ./...
@@ -28,7 +29,7 @@ The desktop application will use **Go + Wails v2 + Svelte/TypeScript**. Core sto
 | --- | --- | --- |
 | 0 | Repository foundation, architecture, CI | Complete |
 | 1 | Linux device discovery and safety policy | Complete |
-| 2 | Non-destructive filesystem verification engine | Planned |
+| 2 | Non-destructive filesystem verification engine | Complete |
 | 3 | Wails/Svelte desktop UI and live progress map | Planned |
 | 4 | Raw destructive capacity probe | Planned |
 | 5 | Reports, packaging, releases | Planned |
