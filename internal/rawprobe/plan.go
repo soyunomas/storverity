@@ -10,7 +10,7 @@ const (
 	DefaultBlockBytes = 4096
 	MinBlockBytes     = 512
 	MaxBlockBytes     = 1024 * 1024
-	DefaultSamples    = 64
+	DefaultSamples    = 512
 	DefaultGuardBytes = 4 * 1024 * 1024
 	MaxSamples        = 4096
 )
