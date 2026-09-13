@@ -83,6 +83,9 @@ interface DesktopBinding {
   StartRawProbe(request: RawProbeRequest): Promise<RawProbeReport>;
   CancelRawProbe(): Promise<boolean>;
   RawProbeActive(): Promise<boolean>;
+  LastReportJSON(): Promise<string>;
+  LastReportText(): Promise<string>;
+  ExportLastReport(format: string): Promise<string>;
 }
 
 interface WailsRuntime {
@@ -132,6 +135,18 @@ export function cancelRawProbe(): Promise<boolean> {
 
 export function rawProbeActive(): Promise<boolean> {
   return desktop().RawProbeActive();
+}
+
+export function lastReportJSON(): Promise<string> {
+  return desktop().LastReportJSON();
+}
+
+export function lastReportText(): Promise<string> {
+  return desktop().LastReportText();
+}
+
+export function exportLastReport(format: 'text' | 'json'): Promise<string> {
+  return desktop().ExportLastReport(format);
 }
 
 export function onVerificationProgress(callback: (progress: VerificationProgress) => void): () => void {
