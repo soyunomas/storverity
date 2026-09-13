@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+permissions:
+  contents: write
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: true
+          cache-dependency-path: go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Validate release tag
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || {
+            echo "Invalid release tag: $GITHUB_REF_NAME" >&2
+            exit 1
+          }
+          grep -Fq "## [$version]" CHANGELOG.md || {
+            echo "CHANGELOG.md has no entry for $version" >&2
+            exit 1
+          }
+          epoch="$(git log -1 --format=%ct "$GITHUB_SHA")"
+          build_date="$(date -u -d "@$epoch" '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "epoch=$epoch" >> "$GITHUB_OUTPUT"
+          echo "build_date=$build_date" >> "$GITHUB_OUTPUT"
+      - name: Linux desktop dependencies
+        run: make linux-deps
+      - name: Validate source and build release artifacts
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT: ${{ github.sha }}
+          BUILD_DATE: ${{ steps.version.outputs.build_date }}
+          SOURCE_DATE_EPOCH: ${{ steps.version.outputs.epoch }}
+        run: make release
+      - name: Upload release build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StorVerity-${{ steps.version.outputs.version }}-linux-x86_64
+          path: dist/*
+          if-no-files-found: error
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag \
+            --title "StorVerity $VERSION" \
+            --generate-notes
