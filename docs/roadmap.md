@@ -1,6 +1,6 @@
 # Development roadmap
 
-## Phase 0 — Foundation
+## Phase 0 — Foundation — COMPLETE
 
 Acceptance criteria:
 
@@ -9,7 +9,7 @@ Acceptance criteria:
 - Local `make check` runs formatting, vetting, and tests.
 - GitHub Actions runs the same checks on pushes and pull requests.
 
-## Phase 1 — Linux discovery and safety
+## Phase 1 — Linux discovery and safety — COMPLETE
 
 Acceptance criteria:
 
@@ -20,7 +20,7 @@ Acceptance criteria:
 - Raw-test eligibility returns machine-readable deny/warning reasons.
 - Unit tests cover normal USB media, system disks, nested encrypted/LVM roots, mounted media, read-only media, and malformed `lsblk` data.
 
-## Phase 2 — Non-destructive filesystem verification
+## Phase 2 — Non-destructive filesystem verification — COMPLETE
 
 Acceptance criteria:
 
@@ -31,7 +31,7 @@ Acceptance criteria:
 - Temporary test data is cleaned up after success, cancellation, and ordinary failures.
 - Tests use temporary directories and injected faults; no real USB device is required for CI.
 
-## Phase 3 — Desktop UI
+## Phase 3 — Desktop UI — COMPLETE
 
 Acceptance criteria:
 
@@ -40,7 +40,7 @@ Acceptance criteria:
 - Live region map with pending/valid/corrupt/read-error/write-error states.
 - Explicit confirmation flows for operations that may modify storage.
 
-## Phase 4 — Raw destructive capacity probe
+## Phase 4 — Raw destructive capacity probe — COMPLETE
 
 Acceptance criteria:
 
@@ -50,11 +50,15 @@ Acceptance criteria:
 - Restores sampled bytes where the selected algorithm can do so safely; otherwise the mode is explicitly destructive.
 - Hardware-in-the-loop tests are documented separately from CI tests.
 
-## Phase 5 — Productization
+## Phase 5 — Productization — COMPLETE
 
 Acceptance criteria:
 
-- Human-readable and machine-readable reports.
-- AppImage plus distro packaging strategy.
-- Signed/tagged releases and changelog.
-- Accessibility and destructive-operation UX review.
+- Human-readable and versioned machine-readable reports.
+- AppImage plus documented distro/Flatpak packaging strategy.
+- Tagged releases with changelog, SHA-256 manifests, and keyless Sigstore-signed release artifacts.
+- Embedded version/commit/build metadata and deterministic tarball packaging.
+- Open-source license and original application identity/assets.
+- Accessibility and destructive-operation UX review with keyboard focus, reduced-motion and status/error semantics implemented in the desktop UI.
+
+Exit state: ordinary CI validates Go/report schema tests, frontend checks, native Wails build, AppImage/tarball packaging and checksums; the tag-driven release workflow additionally signs/verifies release blobs before publishing.
