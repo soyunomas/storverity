@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/soyunomas/storverity/blob/main/internal/report/schema-v1.json",
+  "title": "StorVerity Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "app",
+    "operation",
+    "status",
+    "startedAt",
+    "completedAt",
+    "durationMilliseconds",
+    "device",
+    "advertisedCapacityBytes",
+    "testedCapacityBytes",
+    "errors"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "storverity.report.v1" },
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string" },
+        "buildDate": { "type": "string" }
+      }
+    },
+    "operation": { "enum": ["filesystem", "raw"] },
+    "status": { "enum": ["passed", "failed", "cancelled", "suspicious"] },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "durationMilliseconds": { "type": "integer", "minimum": 0 },
+    "device": { "$ref": "#/$defs/device" },
+    "advertisedCapacityBytes": { "type": "integer", "minimum": 0 },
+    "testedCapacityBytes": { "type": "integer", "minimum": 0 },
+    "errors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/error" }
+    },
+    "filesystem": { "$ref": "#/$defs/filesystem" },
+    "raw": { "$ref": "#/$defs/raw" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "operation": { "const": "filesystem" } }, "required": ["operation"] },
+      "then": { "required": ["filesystem"], "not": { "required": ["raw"] } }
+    },
+    {
+      "if": { "properties": { "operation": { "const": "raw" } }, "required": ["operation"] },
+      "then": { "required": ["raw"], "not": { "required": ["filesystem"] } }
+    }
+  ],
+  "$defs": {
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "displayName", "capacityBytes"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "path": { "type": "string" },
+        "displayName": { "type": "string", "minLength": 1 },
+        "vendor": { "type": "string" },
+        "model": { "type": "string" },
+        "serial": { "type": "string" },
+        "transport": { "type": "string" },
+        "capacityBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "region": { "type": "integer", "minimum": 0 },
+        "sample": { "type": "integer", "minimum": 0 },
+        "offsetBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "filesystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mountPoint", "requestedBytes", "bytesWritten", "bytesVerified", "regions"],
+      "properties": {
+        "mountPoint": { "type": "string" },
+        "requestedBytes": { "type": "integer", "minimum": 1 },
+        "bytesWritten": { "type": "integer", "minimum": 0 },
+        "bytesVerified": { "type": "integer", "minimum": 0 },
+        "regions": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "rawSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "offsetBytes", "outcome", "restored"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "offsetBytes": { "type": "integer", "minimum": 0 },
+        "outcome": {
+          "enum": ["snapshot", "written", "valid", "corrupt", "read-error", "write-error", "restore-error"]
+        },
+        "error": { "type": "string" },
+        "restored": { "type": "boolean" },
+        "restoreError": { "type": "string" }
+      }
+    },
+    "raw": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "advertisedBytes",
+        "blockBytes",
+        "samples",
+        "validSamples",
+        "corruptSamples",
+        "readErrors",
+        "writeErrors",
+        "restoreErrors",
+        "validatedThroughBytes",
+        "suspectFakeCapacity",
+        "restored",
+        "results"
+      ],
+      "properties": {
+        "advertisedBytes": { "type": "integer", "minimum": 0 },
+        "blockBytes": { "type": "integer", "minimum": 1 },
+        "samples": { "type": "integer", "minimum": 0 },
+        "validSamples": { "type": "integer", "minimum": 0 },
+        "corruptSamples": { "type": "integer", "minimum": 0 },
+        "readErrors": { "type": "integer", "minimum": 0 },
+        "writeErrors": { "type": "integer", "minimum": 0 },
+        "restoreErrors": { "type": "integer", "minimum": 0 },
+        "validatedThroughBytes": { "type": "integer", "minimum": 0 },
+        "suspectFakeCapacity": { "type": "boolean" },
+        "restored": { "type": "boolean" },
+        "results": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rawSample" }
+        }
+      }
+    }
+  }
+}
