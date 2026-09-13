@@ -16,88 +16,9 @@ jobs:
         with:
           go-version: '1.25.x'
           cache: false
-      - name: Format Go and wire report accessibility UI
+      - name: Normalize generated source and packaging scripts
         run: |
           git ls-files '*.go' -z | xargs -0 -r gofmt -w
-          python3 - <<'PY'
-          from pathlib import Path
-
-          app = Path('frontend/src/App.svelte')
-          s = app.read_text()
-          anchor = "  import RawProbePanel from './RawProbePanel.svelte';\n"
-          addition = "  import ReportActions from './ReportActions.svelte';\n"
-          if addition not in s:
-              if anchor not in s:
-                  raise SystemExit('App.svelte import anchor missing')
-              s = s.replace(anchor, anchor + addition, 1)
-          if "let reportReady = false;" not in s:
-              s = s.replace("  let report: VerificationReport | undefined;\n", "  let report: VerificationReport | undefined;\n  let reportReady = false;\n", 1)
-          s = s.replace("    report = undefined;\n    regions = [];\n  }", "    report = undefined;\n    reportReady = false;\n    regions = [];\n  }", 1)
-          s = s.replace("    report = undefined;\n    progress = undefined;\n    regions = [];\n    startTimer();", "    report = undefined;\n    reportReady = false;\n    progress = undefined;\n    regions = [];\n    startTimer();", 1)
-          s = s.replace("      runState = 'success';\n    } catch (error) {", "      runState = 'success';\n      reportReady = true;\n    } catch (error) {", 1)
-          s = s.replace("      const message = error instanceof Error ? error.message : String(error);\n      const lowered", "      const message = error instanceof Error ? error.message : String(error);\n      reportReady = true;\n      const lowered", 1)
-          s = s.replace("<span class={`region ${region.state}`} title={regionTitle(region)}></span>", "<span class={`region ${region.state}`} title={regionTitle(region)} aria-label={regionTitle(region)}></span>")
-          s = s.replace('<div class="alert error"><strong>Verification failed</strong>', '<div class="alert error" role="alert"><strong>Verification failed</strong>')
-          s = s.replace('<div class="alert success"><strong>Verification completed</strong>', '<div class="alert success" role="status"><strong>Verification completed</strong>')
-          marker = "          <div class=\"action-row\">\n"
-          block = "          {#if reportReady}<ReportActions />{/if}\n\n"
-          if block not in s:
-              if marker not in s:
-                  raise SystemExit('App.svelte report action anchor missing')
-              s = s.replace(marker, block + marker, 1)
-          s = s.replace('class="device-card" on:click={() => chooseDevice(device)}>', 'class="device-card" aria-pressed={device.id === selectedId} on:click={() => chooseDevice(device)}>')
-          s = s.replace('Raw block writes are disabled', 'Raw probing requires explicit safety confirmation')
-          app.write_text(s)
-
-          raw = Path('frontend/src/RawProbePanel.svelte')
-          s = raw.read_text()
-          anchor = "  import { onMount } from 'svelte';\n"
-          addition = "  import ReportActions from './ReportActions.svelte';\n"
-          if addition not in s:
-              if anchor not in s:
-                  raise SystemExit('RawProbePanel import anchor missing')
-              s = s.replace(anchor, anchor + addition, 1)
-          if "let reportReady = false;" not in s:
-              s = s.replace("  let report: RawProbeReport | undefined;\n", "  let report: RawProbeReport | undefined;\n  let reportReady = false;\n", 1)
-          s = s.replace("    report = undefined;\n    progress = undefined;\n    regions = [];\n  }", "    report = undefined;\n    reportReady = false;\n    progress = undefined;\n    regions = [];\n  }", 1)
-          s = s.replace("    report = undefined;\n    regions = [];\n    progress = undefined;\n    try {\n      challenge", "    report = undefined;\n    reportReady = false;\n    regions = [];\n    progress = undefined;\n    try {\n      challenge", 1)
-          s = s.replace("        samples: 64,", "        samples: 512,")
-          s = s.replace("      state = 'success';\n      challenge", "      state = 'success';\n      reportReady = true;\n      challenge", 1)
-          s = s.replace("    } catch (err) {\n      const message", "    } catch (err) {\n      reportReady = true;\n      const message", 1)
-          s = s.replace('<div class="raw-warning">', '<div class="raw-warning" role="note">')
-          s = s.replace("<span class={`region ${region.state}`} title={regionTitle(region)}></span>", "<span class={`region ${region.state}`} title={regionTitle(region)} aria-label={regionTitle(region)}></span>")
-          s = s.replace('<div class="alert error"><strong>Raw probe failed</strong>', '<div class="alert error" role="alert"><strong>Raw probe failed</strong>')
-          s = s.replace('<div class:raw-danger={report.suspectFakeCapacity || report.restoreErrors > 0} class="raw-result">', '<div class:raw-danger={report.suspectFakeCapacity || report.restoreErrors > 0} class="raw-result" role="status">')
-          marker = "    <div class=\"action-row raw-actions\">\n"
-          block = "    {#if reportReady}<ReportActions />{/if}\n\n"
-          if block not in s:
-              if marker not in s:
-                  raise SystemExit('RawProbePanel report action anchor missing')
-              s = s.replace(marker, block + marker, 1)
-          raw.write_text(s)
-
-          css = Path('frontend/src/app.css')
-          s = css.read_text()
-          extra = '''
-
-/* Phase 5 accessibility: strong keyboard focus and reduced motion. */
-:where(button, select, input):focus-visible {
-  outline: 2px solid #72e7c0;
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-'''
-          if 'Phase 5 accessibility: strong keyboard focus' not in s:
-              css.write_text(s.rstrip() + extra)
-          PY
           chmod +x scripts/package-appimage.sh scripts/package-tarball.sh packaging/appimage/AppRun
       - name: Commit integration changes
         run: |
@@ -107,5 +28,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'chore: format and wire phase 5 integration'
+          git commit -m 'chore: normalize phase 5 sources'
           git push
