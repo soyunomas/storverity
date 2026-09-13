@@ -34,11 +34,13 @@ jobs:
       - name: Frontend validation
         run: make ci-frontend
 
-  desktop-smoke:
+  desktop-package-smoke:
     runs-on: ubuntu-24.04
     needs: [go, frontend]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.x'
@@ -52,4 +54,20 @@ jobs:
       - name: Linux desktop dependencies
         run: make linux-deps
       - name: Desktop build smoke test
+        env:
+          VERSION: 0.0.0-ci
+          COMMIT: ${{ github.sha }}
+          SOURCE_DATE_EPOCH: '0'
+          BUILD_DATE: '1970-01-01T00:00:00Z'
         run: make ci-desktop
+      - name: Package smoke test
+        env:
+          VERSION: 0.0.0-ci
+          SOURCE_DATE_EPOCH: '0'
+        run: make ci-package
+      - name: Upload package smoke artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: storverity-ci-linux-x86_64
+          path: dist/*
+          if-no-files-found: error
