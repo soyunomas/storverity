@@ -107,7 +107,7 @@ func TestRawProbePrepareAndRunRefreshesSafetyAndIdentity(t *testing.T) {
 	if report.ValidSamples != 8 || engine.calls != 1 {
 		t.Fatalf("report=%+v calls=%d", report, engine.calls)
 	}
-	if engine.cfg.CapacityBytes != dev.SizeBytes || engine.cfg.Samples != 8 || engine.cfg.BlockBytes != 512 || engine.cfg.Seed[0] != 7 {
+	if engine.cfg.CapacityBytes != dev.SizeBytes || engine.cfg.Samples != rawprobe.DefaultSamples || engine.cfg.BlockBytes != 512 || engine.cfg.Seed[0] != 7 {
 		t.Fatalf("cfg=%+v", engine.cfg)
 	}
 	if opener.calls != 1 || opener.path != "/dev/sdb" || opener.majorMin != "8:16" {
