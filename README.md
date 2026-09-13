@@ -2,7 +2,7 @@
 
 StorVerity is a Linux-first storage verification tool for detecting fake-capacity, corrupted, or unreliable USB drives, SD cards, and other removable media.
 
-> **Status:** early development. The desktop application includes both the guarded non-destructive filesystem verifier and a guarded destructive raw capacity probe. Raw probing can cause data loss and should only be used on expendable media.
+> **Status:** active early release development. The desktop application includes a guarded non-destructive filesystem verifier and a guarded destructive raw capacity probe. Raw probing can cause data loss and should only be used on expendable media.
 
 ## Current capabilities
 
@@ -14,9 +14,12 @@ StorVerity is a Linux-first storage verification tool for detecting fake-capacit
 - Sampled destructive raw capacity probing with unique patterns across the advertised address space, reverse-order verification for alias/wraparound detection, structured per-sample outcomes, cancellation, and best-effort restoration of touched blocks.
 - A short-lived one-time destructive confirmation challenge tied to refreshed device identity, plus pre-open and post-open safety revalidation.
 - Linux raw targets opened synchronously and exclusively, with descriptor `major:minor` verification before the first write.
-- Wails v2 + Svelte/TypeScript desktop UI with device selection, safety state, live region maps, progress, Stop/restore support, and explicit destructive-risk messaging.
+- Wails v2 + Svelte/TypeScript desktop UI with device selection, safety state, live region maps, progress, Stop/restore support, report export, keyboard focus treatment, reduced-motion support, and explicit destructive-risk messaging.
+- Human-readable TXT reports and stable `storverity.report.v1` JSON reports containing app/build metadata, device identity, tested/advertised capacity, timestamps, status and structured errors.
+- x86_64 AppImage and deterministic Linux tarball packaging with SHA-256 manifests; `.deb`, RPM and Flatpak tradeoffs are documented separately.
+- Tag-driven GitHub releases with SemVer/changelog validation, embedded build metadata, keyless Sigstore signing bundles, and release checksums.
 - Reproducible Go/npm dependency metadata with committed `go.sum` and `package-lock.json`; frontend and Wails builds install with `npm ci`.
-- CI coverage for the Go core, raw-probe fakes, dependency consistency, frontend tests/type checking/security audit/production build, and a native Wails build on Ubuntu 24.04 with WebKitGTK 4.1.
+- CI coverage for the Go core, raw-probe fakes, report/schema tests, dependency consistency, frontend tests/type checking/security audit/production build, native Wails build, AppImage/tarball packaging and checksum verification on Ubuntu 24.04.
 
 ## Requirements
 
@@ -40,7 +43,7 @@ Typical setup and validation:
 make linux-deps     # Ubuntu/Debian desktop packages
 make bootstrap      # locked Go/frontend dependencies + pinned Wails CLI
 make check          # Go core + frontend validation
-make ci             # full CI-equivalent validation, including desktop build
+make ci             # full CI-equivalent validation, including desktop/package smoke tests
 ```
 
 Useful development targets include:
@@ -50,6 +53,7 @@ make list            # diagnostic JSON device discovery
 make test-rawprobe   # raw engine/safety tests; never touches real block devices
 make dev             # Wails desktop development mode
 make build           # clean production desktop build
+make package         # AppImage + deterministic tarball + SHA256SUMS
 make frontend-dev    # standalone Vite dev server
 make lock-check      # verify go.mod/go.sum/package-lock consistency
 make lock-update     # intentionally regenerate dependency lock data
@@ -60,6 +64,18 @@ make clean           # generated artifacts, preserving tracked placeholders
 Run `make help` for the complete target list. CI intentionally calls the same `make ci-*` targets used locally so the workflow does not duplicate validation commands.
 
 Core and CLI work can still be validated without the desktop toolchain with `make check-core`. Production Linux desktop builds use the `webkit2_41` Wails build tag by default; it can be overridden with `WAILS_TAGS=...` when needed.
+
+## Reports
+
+After a filesystem verification or raw capacity probe, the desktop UI can save the latest result as TXT or JSON. JSON exports use the stable `storverity.report.v1` envelope and are validated against the committed schema in `internal/report/schema-v1.json`.
+
+Reports include device identity data (including serial number when exposed by the OS). Treat exported reports as potentially identifying before publishing them. See [`docs/report-schema-v1.md`](docs/report-schema-v1.md) for the compatibility contract.
+
+## Packaging and releases
+
+`make package VERSION=x.y.z` builds an x86_64 AppImage, a deterministic Linux tarball and `SHA256SUMS`. The release workflow runs from SemVer-style `vMAJOR.MINOR.PATCH` tags, requires a matching changelog entry, embeds version/commit/build date, signs every release artifact keylessly with Sigstore/cosign, verifies the generated bundles, and publishes the artifacts plus signature bundles to GitHub Releases.
+
+Native `.deb`/RPM packaging is deferred until a tested distro support matrix exists. Flatpak is deferred until raw I/O can be moved behind a narrowly scoped privileged helper rather than broad sandbox device permissions. See [`docs/packaging.md`](docs/packaging.md) and [`docs/versioning.md`](docs/versioning.md).
 
 ## Desktop stack
 
@@ -74,9 +90,9 @@ The desktop application uses **Go 1.25 + Wails v2.15 + Svelte 5/TypeScript**. St
 | 2 | Non-destructive filesystem verification engine | Complete |
 | 3 | Wails/Svelte desktop UI and live progress map | Complete |
 | 4 | Raw destructive capacity probe | Complete |
-| 5 | Reports, packaging, releases | Planned |
+| 5 | Reports, packaging, releases | Complete |
 
-See [`todo.md`](todo.md) for the live implementation checklist, [`docs/roadmap.md`](docs/roadmap.md) for phase acceptance criteria, and [`docs/raw-probe.md`](docs/raw-probe.md) for the raw-probe threat model and safety design.
+See [`todo.md`](todo.md) for the implementation checklist, [`docs/roadmap.md`](docs/roadmap.md) for phase acceptance criteria, [`docs/raw-probe.md`](docs/raw-probe.md) for the raw-probe threat model, and [`docs/accessibility-and-destructive-ux.md`](docs/accessibility-and-destructive-ux.md) for the Phase 5 UX review.
 
 ## Safety model
 
@@ -92,4 +108,4 @@ Ordinary CI never performs raw writes against `/dev/*`. See [`docs/raw-probe-har
 
 ## License
 
-No license has been selected yet. Until one is added, normal copyright rules apply.
+StorVerity is released under the MIT License. See [`LICENSE`](LICENSE).
