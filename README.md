@@ -20,25 +20,38 @@ StorVerity is a Linux-first storage verification tool for detecting fake-capacit
 - Node.js 22 for frontend development.
 - Linux desktop development packages required by Wails/WebKitGTK.
 
-Core and CLI checks do not require the desktop toolchain:
+## Development
+
+The project uses a self-documenting `Makefile` as the main development interface. Start with:
 
 ```bash
-go vet ./cmd/... ./internal/...
-go test -race ./cmd/... ./internal/...
-go run ./cmd/storverity list
+make help
+make doctor
 ```
 
-For the desktop application, install Wails v2.15 and the platform dependencies, then use:
+Typical setup and validation:
 
 ```bash
-wails dev
+make linux-deps     # Ubuntu/Debian desktop packages
+make bootstrap      # Go/frontend dependencies + pinned Wails CLI
+make check          # Go core + frontend validation
+make ci             # Full CI-equivalent validation, including desktop build
 ```
 
-Production Linux builds use the WebKitGTK 4.1 tag:
+Useful development targets include:
 
 ```bash
-wails build -clean -tags webkit2_41
+make list            # diagnostic JSON device discovery
+make frontend-dev    # standalone Vite dev server
+make desktop-dev     # Wails desktop development mode
+make desktop-build   # clean production desktop build
+make test-cover-html # Go coverage report
+make clean           # generated artifacts, preserving tracked placeholders
 ```
+
+Run `make help` for the complete target list. CI intentionally calls the same `make ci-*` targets used locally so the workflow does not duplicate validation commands.
+
+Core and CLI work can still be validated without the desktop toolchain with `make check-core`. Production Linux desktop builds use the `webkit2_41` Wails build tag by default; it can be overridden with `WAILS_TAGS=...` when needed.
 
 ## Desktop stack
 
