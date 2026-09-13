@@ -123,8 +123,10 @@
       reportReady = true;
       reportReady = true;
       reportReady = true;
+      reportReady = true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      reportReady = true;
       reportReady = true;
       reportReady = true;
       reportReady = true;
