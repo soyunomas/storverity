@@ -17,7 +17,7 @@ GO              ?= go
 
 .PHONY: \
 	help info doctor bootstrap deps \
-	fmt fmt-check vet test test-cover test-cover-html check-core run list \
+	go-deps fmt fmt-check vet test test-cover test-cover-html check-core run list \
 	frontend-install frontend-audit frontend-test frontend-check frontend-build frontend-dev frontend-all \
 	wails-install linux-deps desktop-dev desktop-build desktop-clean \
 	check ci ci-go ci-frontend ci-desktop \
@@ -162,8 +162,10 @@ ci: ci-go ci-frontend ci-desktop ## Run the complete CI-equivalent pipeline loca
 clean-coverage: ## Remove generated coverage reports
 	rm -f $(COVERAGE_FILE) $(COVERAGE_HTML)
 
-clean-frontend: ## Remove generated frontend assets
-	rm -rf $(FRONTEND_DIR)/dist
+clean-frontend: ## Remove generated frontend assets while preserving the tracked embed placeholder
+	@if [[ -d '$(FRONTEND_DIR)/dist' ]]; then \
+		find '$(FRONTEND_DIR)/dist' -mindepth 1 ! -name '.gitkeep' -delete; \
+	fi
 
 clean: clean-coverage clean-frontend desktop-clean ## Remove generated build/test artifacts
 
