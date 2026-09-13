@@ -23,12 +23,42 @@ jobs:
       - name: Test
         run: go test -race -cover ./...
 
-  frontend-domain:
+  frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
-      - name: Test frontend domain logic
-        run: node --experimental-strip-types --test frontend/tests/domain.test.ts
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: frontend/package.json
+      - name: Install
+        run: npm install
+      - name: Unit tests
+        run: npm test
+      - name: Svelte type check
+        run: npm run check
+      - name: Production build
+        run: npm run build
+
+  desktop-smoke:
+    runs-on: ubuntu-24.04
+    needs: [go, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Linux desktop dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+      - name: Build desktop application
+        run: wails build -clean -tags webkit2_41

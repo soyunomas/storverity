@@ -9,6 +9,7 @@ export interface DeviceCard {
   readOnly: boolean; systemDisk: boolean; likelyExternal: boolean; rawTest: RawTestDecision;
 }
 export interface RegionCell { index: number; state: RegionState }
+export interface ProgressLike { phase: 'write' | 'verify'; bytesCompleted: number; bytesTotal: number }
 
 export function formatBytes(value: number): string {
   if (!Number.isFinite(value) || value < 0) return 'Unknown';
@@ -22,9 +23,13 @@ export function formatBytes(value: number): string {
 export function safetyLabel(device: DeviceCard): string {
   if (device.systemDisk) return 'System disk';
   if (device.readOnly) return 'Read-only';
-  if (device.rawTest.allowed) return 'Eligible for raw test';
+  if (device.rawTest.allowed) return 'Raw test eligible';
   if (device.rawTest.reasons?.some((reason) => reason.code === 'mounted')) return 'Mounted';
   return 'Protected';
+}
+
+export function canVerifyFilesystem(device: DeviceCard | undefined): boolean {
+  return Boolean(device && device.likelyExternal && !device.systemDisk && !device.readOnly && device.mountPoints.length > 0);
 }
 
 export function createRegionCells(total: number): RegionCell[] {
@@ -35,4 +40,11 @@ export function createRegionCells(total: number): RegionCell[] {
 export function updateRegion(cells: RegionCell[], index: number, state: RegionState): RegionCell[] {
   if (index < 0 || index >= cells.length) return cells;
   return cells.map((cell) => cell.index === index ? { ...cell, state } : cell);
+}
+
+export function overallProgress(progress: ProgressLike | undefined): number {
+  if (!progress || progress.bytesTotal <= 0) return 0;
+  const phaseOffset = progress.phase === 'verify' ? progress.bytesTotal : 0;
+  const completed = Math.min(Math.max(progress.bytesCompleted, 0), progress.bytesTotal);
+  return Math.min(1, (phaseOffset + completed) / (progress.bytesTotal * 2));
 }
