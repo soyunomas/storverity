@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.soyunomas.StorVerity</id>
+  <name>StorVerity</name>
+  <summary>Verify removable storage integrity and detect fake capacity</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>StorVerity is a Linux-first verification utility for USB drives, SD cards and other removable storage. It provides non-destructive filesystem verification and a guarded raw capacity probe for detecting fraudulent or unreliable media.</p>
+    <p>The raw capacity probe writes directly to selected storage and can cause data loss. StorVerity blocks unsafe targets and requires explicit per-run confirmation.</p>
+  </description>
+  <launchable type="desktop-id">io.github.soyunomas.StorVerity.desktop</launchable>
+  <url type="homepage">https://github.com/soyunomas/storverity</url>
+  <developer id="io.github.soyunomas">
+    <name>soyunomas</name>
+  </developer>
+  <categories>
+    <category>System</category>
+    <category>Utility</category>
+  </categories>
+  <releases>
+    <release version="0.1.0" date="2026-09-13">
+      <description><p>Initial Linux release.</p></description>
+    </release>
+  </releases>
+</component>
