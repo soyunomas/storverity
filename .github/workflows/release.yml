@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   linux-x86_64:
@@ -26,6 +27,7 @@ jobs:
           node-version: '22.16.0'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - uses: sigstore/cosign-installer@v3
       - name: Validate release tag
         id: version
         shell: bash
@@ -54,6 +56,22 @@ jobs:
           BUILD_DATE: ${{ steps.version.outputs.build_date }}
           SOURCE_DATE_EPOCH: ${{ steps.version.outputs.epoch }}
         run: make release
+      - name: Sign and verify release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@${GITHUB_REF}"
+          mapfile -t files < <(find dist -maxdepth 1 -type f \( -name 'StorVerity-*' -o -name 'SHA256SUMS' \) -printf '%p\n' | LC_ALL=C sort)
+          ((${#files[@]} > 0)) || { echo 'no release artifacts to sign' >&2; exit 1; }
+          for file in "${files[@]}"; do
+            bundle="${file}.sigstore.json"
+            cosign sign-blob --yes --bundle "$bundle" "$file"
+            cosign verify-blob \
+              --bundle "$bundle" \
+              --certificate-identity "$identity" \
+              --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+              "$file"
+          done
       - name: Upload release build artifact
         uses: actions/upload-artifact@v4
         with:
