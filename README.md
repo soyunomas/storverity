@@ -6,12 +6,16 @@ StorVerity is a Linux-first storage verification tool for detecting fake-capacit
 
 ## Current capabilities
 
-- Repository structure, architecture, roadmap, and CI baseline.
-- Minimal version command used to validate the Go toolchain and application skeleton.
+- Discover whole-disk block devices on Linux through structured `lsblk` JSON.
+- Aggregate mount points and filesystems from nested partitions, dm-crypt/LVM stacks, and other descendants.
+- Identify disks that contain critical system mount points.
+- Flag disks containing swap.
+- Evaluate whether a disk is eligible for a future raw destructive test, with explicit deny/warning reasons.
+- Expose discovery and safety information through a temporary JSON CLI.
 
 ```bash
 go test ./...
-go run ./cmd/storverity version
+go run ./cmd/storverity list
 ```
 
 ## Planned desktop stack
@@ -23,7 +27,7 @@ The desktop application will use **Go + Wails v2 + Svelte/TypeScript**. Core sto
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 0 | Repository foundation, architecture, CI | Complete |
-| 1 | Linux device discovery and safety policy | Planned |
+| 1 | Linux device discovery and safety policy | Complete |
 | 2 | Non-destructive filesystem verification engine | Planned |
 | 3 | Wails/Svelte desktop UI and live progress map | Planned |
 | 4 | Raw destructive capacity probe | Planned |
