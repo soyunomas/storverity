@@ -177,9 +177,13 @@ func (c *RawProbeController) Run(ctx context.Context, req RawProbeRequest, emit 
 	if err != nil {
 		return rawprobe.Report{}, fmt.Errorf("create raw probe seed: %w", err)
 	}
+	samples := req.Samples
+	if samples < rawprobe.DefaultSamples {
+		samples = rawprobe.DefaultSamples
+	}
 	report, runErr := c.engine.Run(ctx, media, rawprobe.Config{
 		CapacityBytes: opened.SizeBytes,
-		Samples:       req.Samples,
+		Samples:       samples,
 		BlockBytes:    req.BlockBytes,
 		Seed:          seed,
 	}, func(progress rawprobe.Progress) {
