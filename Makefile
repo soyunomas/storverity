@@ -210,7 +210,7 @@ release-checksums: ## Write deterministic SHA-256 checksums for release artifact
 	mkdir -p '$(DIST_DIR)'; \
 	rm -f '$(DIST_DIR)/SHA256SUMS'; \
 	mapfile -t files < <(find '$(DIST_DIR)' -maxdepth 1 -type f -name 'StorVerity-*' -printf '%f\n' | LC_ALL=C sort); \
-	((${#files[@]} > 0)) || { echo 'error: no release artifacts found' >&2; exit 1; }; \
+	(($${#files[@]} > 0)) || { echo 'error: no release artifacts found' >&2; exit 1; }; \
 	cd '$(DIST_DIR)'; \
 	sha256sum "$${files[@]}" > SHA256SUMS
 
