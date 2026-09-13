@@ -47,7 +47,7 @@ func main() {
 		path, err := runtime.SaveFileDialog(ctx, runtime.SaveDialogOptions{
 			Title:           req.Title,
 			DefaultFilename: req.SuggestedFilename,
-			Filters: []runtime.FileFilter{{DisplayName: req.DisplayName, Pattern: req.Pattern}},
+			Filters:         []runtime.FileFilter{{DisplayName: req.DisplayName, Pattern: req.Pattern}},
 		})
 		if err != nil {
 			return "", fmt.Errorf("choose report destination: %w", err)

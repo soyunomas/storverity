@@ -15,8 +15,8 @@ func TestCommittedSchemaIsValidJSONAndMatchesContract(t *testing.T) {
 		t.Fatal("schema-v1.json is not valid JSON")
 	}
 	var schema struct {
-		Schema string `json:"$schema"`
-		ID     string `json:"$id"`
+		Schema     string `json:"$schema"`
+		ID         string `json:"$id"`
 		Properties struct {
 			SchemaVersion struct {
 				Const string `json:"const"`

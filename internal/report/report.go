@@ -54,7 +54,7 @@ type ErrorEntry struct {
 }
 
 type FilesystemResult struct {
-	MountPoint    string `json:"mountPoint"`
+	MountPoint     string `json:"mountPoint"`
 	RequestedBytes int64  `json:"requestedBytes"`
 	BytesWritten   int64  `json:"bytesWritten"`
 	BytesVerified  int64  `json:"bytesVerified"`
@@ -86,19 +86,19 @@ type RawResult struct {
 }
 
 type Document struct {
-	SchemaVersion       string            `json:"schemaVersion"`
-	App                 AppInfo           `json:"app"`
-	Operation           Operation         `json:"operation"`
-	Status              Status            `json:"status"`
-	StartedAt           string            `json:"startedAt"`
-	CompletedAt         string            `json:"completedAt"`
-	DurationMilliseconds int64             `json:"durationMilliseconds"`
-	Device              DeviceInfo        `json:"device"`
-	AdvertisedCapacityBytes uint64         `json:"advertisedCapacityBytes"`
-	TestedCapacityBytes uint64             `json:"testedCapacityBytes"`
-	Errors              []ErrorEntry      `json:"errors"`
-	Filesystem          *FilesystemResult `json:"filesystem,omitempty"`
-	Raw                 *RawResult        `json:"raw,omitempty"`
+	SchemaVersion           string            `json:"schemaVersion"`
+	App                     AppInfo           `json:"app"`
+	Operation               Operation         `json:"operation"`
+	Status                  Status            `json:"status"`
+	StartedAt               string            `json:"startedAt"`
+	CompletedAt             string            `json:"completedAt"`
+	DurationMilliseconds    int64             `json:"durationMilliseconds"`
+	Device                  DeviceInfo        `json:"device"`
+	AdvertisedCapacityBytes uint64            `json:"advertisedCapacityBytes"`
+	TestedCapacityBytes     uint64            `json:"testedCapacityBytes"`
+	Errors                  []ErrorEntry      `json:"errors"`
+	Filesystem              *FilesystemResult `json:"filesystem,omitempty"`
+	Raw                     *RawResult        `json:"raw,omitempty"`
 }
 
 func Timestamp(t time.Time) string {

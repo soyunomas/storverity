@@ -11,18 +11,18 @@ func sampleFilesystemDocument() Document {
 	started := time.Date(2026, 9, 13, 20, 0, 0, 0, time.UTC)
 	completed := started.Add(1500 * time.Millisecond)
 	return Document{
-		SchemaVersion: SchemaVersion,
-		App: AppInfo{Name: "StorVerity", Version: "0.1.0", Commit: "abc123"},
-		Operation: OperationFilesystem,
-		Status: StatusPassed,
-		StartedAt: Timestamp(started),
-		CompletedAt: Timestamp(completed),
-		DurationMilliseconds: DurationMilliseconds(started, completed),
-		Device: DeviceInfo{ID: "serial:USB1", Path: "/dev/sdb", DisplayName: "Example Flash", Serial: "USB1", Transport: "usb", CapacityBytes: 64 << 30},
+		SchemaVersion:           SchemaVersion,
+		App:                     AppInfo{Name: "StorVerity", Version: "0.1.0", Commit: "abc123"},
+		Operation:               OperationFilesystem,
+		Status:                  StatusPassed,
+		StartedAt:               Timestamp(started),
+		CompletedAt:             Timestamp(completed),
+		DurationMilliseconds:    DurationMilliseconds(started, completed),
+		Device:                  DeviceInfo{ID: "serial:USB1", Path: "/dev/sdb", DisplayName: "Example Flash", Serial: "USB1", Transport: "usb", CapacityBytes: 64 << 30},
 		AdvertisedCapacityBytes: 64 << 30,
-		TestedCapacityBytes: 256 << 20,
-		Errors: []ErrorEntry{},
-		Filesystem: &FilesystemResult{MountPoint: "/media/USB", RequestedBytes: 256 << 20, BytesWritten: 256 << 20, BytesVerified: 256 << 20, Regions: 16},
+		TestedCapacityBytes:     256 << 20,
+		Errors:                  []ErrorEntry{},
+		Filesystem:              &FilesystemResult{MountPoint: "/media/USB", RequestedBytes: 256 << 20, BytesWritten: 256 << 20, BytesVerified: 256 << 20, Regions: 16},
 	}
 }
 
@@ -65,16 +65,16 @@ func TestTextIsHumanReadable(t *testing.T) {
 func TestRawDocumentRequiresResultCount(t *testing.T) {
 	started := time.Now().UTC()
 	doc := Document{
-		SchemaVersion: SchemaVersion,
-		App: AppInfo{Name: "StorVerity", Version: "0.1.0"},
-		Operation: OperationRaw,
-		Status: StatusSuspicious,
-		StartedAt: Timestamp(started),
-		CompletedAt: Timestamp(started),
-		Device: DeviceInfo{ID: "serial:USB1", Path: "/dev/sdb", DisplayName: "USB", CapacityBytes: 1000},
+		SchemaVersion:           SchemaVersion,
+		App:                     AppInfo{Name: "StorVerity", Version: "0.1.0"},
+		Operation:               OperationRaw,
+		Status:                  StatusSuspicious,
+		StartedAt:               Timestamp(started),
+		CompletedAt:             Timestamp(started),
+		Device:                  DeviceInfo{ID: "serial:USB1", Path: "/dev/sdb", DisplayName: "USB", CapacityBytes: 1000},
 		AdvertisedCapacityBytes: 1000,
-		Errors: []ErrorEntry{},
-		Raw: &RawResult{BlockBytes: 512, Samples: 2, Results: []RawSample{{Index: 0}}},
+		Errors:                  []ErrorEntry{},
+		Raw:                     &RawResult{BlockBytes: 512, Samples: 2, Results: []RawSample{{Index: 0}}},
 	}
 	if err := doc.Validate(); err == nil || !strings.Contains(err.Error(), "result count") {
 		t.Fatalf("Validate() err=%v", err)

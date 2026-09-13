@@ -20,18 +20,18 @@ func TestReportManagerExportsJSONWithSuggestedName(t *testing.T) {
 	})
 	started := time.Date(2026, 9, 13, 20, 0, 0, 0, time.UTC)
 	manager.Set(storagereport.Document{
-		SchemaVersion: storagereport.SchemaVersion,
-		App: storagereport.AppInfo{Name: "StorVerity", Version: "0.1.0"},
-		Operation: storagereport.OperationFilesystem,
-		Status: storagereport.StatusPassed,
-		StartedAt: storagereport.Timestamp(started),
-		CompletedAt: storagereport.Timestamp(started.Add(time.Second)),
-		DurationMilliseconds: 1000,
-		Device: storagereport.DeviceInfo{ID: "serial:USB", Path: "/dev/sdb", DisplayName: "USB", CapacityBytes: 1024},
+		SchemaVersion:           storagereport.SchemaVersion,
+		App:                     storagereport.AppInfo{Name: "StorVerity", Version: "0.1.0"},
+		Operation:               storagereport.OperationFilesystem,
+		Status:                  storagereport.StatusPassed,
+		StartedAt:               storagereport.Timestamp(started),
+		CompletedAt:             storagereport.Timestamp(started.Add(time.Second)),
+		DurationMilliseconds:    1000,
+		Device:                  storagereport.DeviceInfo{ID: "serial:USB", Path: "/dev/sdb", DisplayName: "USB", CapacityBytes: 1024},
 		AdvertisedCapacityBytes: 1024,
-		TestedCapacityBytes: 512,
-		Errors: []storagereport.ErrorEntry{},
-		Filesystem: &storagereport.FilesystemResult{MountPoint: "/media/USB", RequestedBytes: 512, BytesWritten: 512, BytesVerified: 512, Regions: 1},
+		TestedCapacityBytes:     512,
+		Errors:                  []storagereport.ErrorEntry{},
+		Filesystem:              &storagereport.FilesystemResult{MountPoint: "/media/USB", RequestedBytes: 512, BytesWritten: 512, BytesVerified: 512, Regions: 1},
 	})
 	path, err := manager.Export("json")
 	if err != nil {
@@ -78,13 +78,13 @@ func TestRecordRawReportMarksSuspiciousCapacity(t *testing.T) {
 	card := DeviceCard{ID: "serial:USB1", Path: "/dev/sdb", DisplayName: "Example Flash", CapacityBytes: 2 << 40}
 	started := time.Now().UTC()
 	result := rawprobe.Report{
-		AdvertisedBytes: 2 << 40,
-		BlockBytes: 4096,
-		Samples: 2,
-		ValidSamples: 1,
-		CorruptSamples: 1,
+		AdvertisedBytes:     2 << 40,
+		BlockBytes:          4096,
+		Samples:             2,
+		ValidSamples:        1,
+		CorruptSamples:      1,
 		SuspectFakeCapacity: true,
-		Restored: true,
+		Restored:            true,
 		Results: []rawprobe.SampleResult{
 			{Index: 0, OffsetBytes: 4 << 20, Outcome: rawprobe.OutcomeValid, Restored: true},
 			{Index: 1, OffsetBytes: 1 << 40, Outcome: rawprobe.OutcomeCorrupt, Error: "verification pattern mismatch", Restored: true},
