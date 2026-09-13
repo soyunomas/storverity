@@ -95,10 +95,12 @@
       reportReady = true;
       reportReady = true;
       reportReady = true;
+      reportReady = true;
       challenge = undefined;
       confirmation = '';
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      reportReady = true;
       reportReady = true;
       reportReady = true;
       reportReady = true;
