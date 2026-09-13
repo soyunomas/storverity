@@ -20,13 +20,15 @@ The project follows [Semantic Versioning 2.0.0](https://semver.org/) and uses Gi
 - Native report export with private file permissions.
 - Original StorVerity application icon and Linux desktop/AppStream metadata.
 - x86_64 AppImage and deterministic Linux tarball packaging.
-- SHA-256 release checksums and tagged GitHub Release automation.
+- SHA-256 release checksums, keyless Sigstore/cosign signing bundles and tagged GitHub Release automation.
+- Keyboard-visible focus treatment, reduced-motion support and accessible status/error semantics.
 - MIT license.
 
 ### Security
 
 - Raw writes are denied for mounted, system, swap-containing, read-only, non-whole-disk and non-external targets.
 - Linux raw devices are opened synchronously and exclusively, matched by `major:minor`, and revalidated again before the first write.
+- Release blobs are signed with the GitHub Actions OIDC identity and verified before publication; no long-lived signing key is stored in the repository.
 - Ordinary CI never runs destructive tests against real block devices.
 
 [Unreleased]: https://github.com/soyunomas/storverity/compare/v0.1.0...HEAD
