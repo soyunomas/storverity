@@ -12,18 +12,20 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// OpenLinuxBlockDevice opens a block device for synchronous read/write access
-// and verifies its major:minor identity after opening. Callers must perform a
-// fresh discovery/safety decision before this function; the post-open device
-// number check closes the path-replacement window between discovery and open.
+// OpenLinuxBlockDevice opens a block device for synchronous, exclusive
+// read/write access and verifies its major:minor identity after opening.
+// Callers must perform a fresh discovery/safety decision before this function;
+// O_EXCL adds a kernel-level busy-device barrier while the descriptor remains
+// open, and the post-open device-number check closes the path-replacement
+// window between discovery and open.
 func OpenLinuxBlockDevice(path string, expectedMajorMinor string) (Media, error) {
 	clean := filepath.Clean(strings.TrimSpace(path))
 	if clean != path || !strings.HasPrefix(clean, "/dev/") || clean == "/dev" {
 		return nil, fmt.Errorf("invalid raw device path %q", path)
 	}
-	f, err := os.OpenFile(clean, os.O_RDWR|os.O_SYNC, 0)
+	f, err := os.OpenFile(clean, os.O_RDWR|os.O_SYNC|unix.O_EXCL, 0)
 	if err != nil {
-		return nil, fmt.Errorf("open raw device %s: %w", clean, err)
+		return nil, fmt.Errorf("open raw device %s exclusively: %w", clean, err)
 	}
 	fail := func(err error) (Media, error) {
 		_ = f.Close()
