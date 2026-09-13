@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=StorVerity
+Comment=Verify removable storage integrity and detect fake capacity
+Exec=storverity
+Icon=io.github.soyunomas.StorVerity
+Terminal=false
+Categories=System;Utility;
+Keywords=USB;storage;flash;SD;verification;capacity;
+StartupNotify=true
