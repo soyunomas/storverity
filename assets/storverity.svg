@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">StorVerity</title>
+  <desc id="desc">A storage drive inside a verification shield.</desc>
+  <defs>
+    <linearGradient id="bg" x1="28" y1="24" x2="226" y2="232" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#172334"/>
+      <stop offset="1" stop-color="#090f18"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="62" y1="58" x2="198" y2="205" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#72e7c0"/>
+      <stop offset="1" stop-color="#3eb59a"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="236" height="236" rx="54" fill="url(#bg)"/>
+  <path d="M128 38 205 66v55c0 51-29 82-77 101-48-19-77-50-77-101V66l77-28Z" fill="#101a27" stroke="url(#accent)" stroke-width="12" stroke-linejoin="round"/>
+  <rect x="78" y="78" width="100" height="91" rx="13" fill="#182638" stroke="#9bb0c5" stroke-width="6"/>
+  <path d="M93 104h70M93 125h70" stroke="#637991" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="99" cy="149" r="7" fill="#72e7c0"/>
+  <path d="m116 147 12 12 27-30" fill="none" stroke="#72e7c0" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
