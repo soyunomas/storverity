@@ -2,8 +2,10 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 APP_NAME        ?= storverity
+APP_META_PKG    ?= github.com/soyunomas/storverity/internal/appmeta
 FRONTEND_DIR    ?= frontend
 BUILD_DIR       ?= build/bin
+DIST_DIR        ?= dist
 COVERAGE_FILE   ?= coverage.out
 COVERAGE_HTML   ?= coverage.html
 GO_PACKAGES     ?= ./cmd/... ./internal/...
@@ -14,14 +16,20 @@ WAILS_TAGS      ?= webkit2_41
 WAILS           ?= wails
 NPM             ?= npm
 GO              ?= go
+VERSION          ?= 0.1.0-dev
+COMMIT           ?= $(shell git rev-parse HEAD 2>/dev/null || printf unknown)
+SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || printf 0)
+BUILD_DATE       ?= $(shell date -u -d '@$(SOURCE_DATE_EPOCH)' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || printf unknown)
+APP_LDFLAGS      = -X $(APP_META_PKG).Version=$(VERSION) -X $(APP_META_PKG).Commit=$(COMMIT) -X $(APP_META_PKG).BuildDate=$(BUILD_DATE)
 
 .PHONY: \
 	help info doctor bootstrap deps lock-update lock-check \
 	go-deps go-mod-check fmt fmt-check vet test test-rawprobe test-cover test-cover-html check-core run list \
 	frontend-install frontend-update frontend-lock-check frontend-audit frontend-test frontend-check frontend-build frontend-dev frontend-all \
 	wails-install wails-doctor linux-deps dev build desktop-dev desktop-build desktop-clean \
-	check ci ci-go ci-frontend ci-desktop \
-	clean clean-coverage clean-frontend clean-all
+	package-appimage package-tarball package release-checksums release \
+	check ci ci-go ci-frontend ci-desktop ci-package \
+	clean clean-coverage clean-frontend clean-packaging clean-all
 
 ##@ General
 
@@ -36,10 +44,15 @@ help: ## Show this help message
 	@printf '  make check           Run core + frontend validation\n'
 	@printf '  make test-rawprobe   Run raw-probe tests without block-device access\n'
 	@printf '  make dev             Start the Wails development app\n'
+	@printf '  make package         Build AppImage + deterministic tarball\n'
 	@printf '  make ci              Run the full CI-equivalent validation\n\n'
 
 info: ## Print project build configuration
 	@printf 'Application:       %s\n' '$(APP_NAME)'
+	@printf 'Version:           %s\n' '$(VERSION)'
+	@printf 'Commit:            %s\n' '$(COMMIT)'
+	@printf 'Build date:        %s\n' '$(BUILD_DATE)'
+	@printf 'Source epoch:      %s\n' '$(SOURCE_DATE_EPOCH)'
 	@printf 'Go packages:       %s\n' '$(GO_PACKAGES)'
 	@printf 'Frontend:          %s\n' '$(FRONTEND_DIR)'
 	@printf 'Wails version:     %s\n' '$(WAILS_VERSION)'
@@ -173,11 +186,37 @@ build: desktop-build ## Alias for a production desktop build
 desktop-dev: ## Start the Wails desktop app in development mode
 	$(WAILS) dev -tags '$(WAILS_TAGS)'
 
-desktop-build: ## Build a clean production desktop binary
-	$(WAILS) build -clean -tags '$(WAILS_TAGS)'
+desktop-build: ## Build a clean production desktop binary with embedded release metadata
+	SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' $(WAILS) build -clean -tags '$(WAILS_TAGS)' -ldflags '$(APP_LDFLAGS)'
 
 desktop-clean: ## Remove Wails desktop build output
 	rm -rf $(BUILD_DIR)
+
+##@ Packaging / release
+
+package-appimage: desktop-build ## Build the x86_64 AppImage from the production desktop binary
+	VERSION='$(VERSION)' ARCH=x86_64 DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-appimage.sh
+
+package-tarball: desktop-build ## Build a deterministic portable Linux tarball
+	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
+
+package: desktop-build ## Build all Linux release packages and checksums
+	VERSION='$(VERSION)' ARCH=x86_64 DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-appimage.sh
+	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
+	$(MAKE) release-checksums DIST_DIR='$(DIST_DIR)'
+
+release-checksums: ## Write deterministic SHA-256 checksums for release artifacts
+	@set -euo pipefail; \
+	mkdir -p '$(DIST_DIR)'; \
+	rm -f '$(DIST_DIR)/SHA256SUMS'; \
+	mapfile -t files < <(find '$(DIST_DIR)' -maxdepth 1 -type f -name 'StorVerity-*' -printf '%f\n' | LC_ALL=C sort); \
+	((${#files[@]} > 0)) || { echo 'error: no release artifacts found' >&2; exit 1; }; \
+	cd '$(DIST_DIR)'; \
+	sha256sum "$${files[@]}" > SHA256SUMS
+
+release: check package ## Validate and build release artifacts
+	@echo 'Release artifacts:'
+	@ls -lh '$(DIST_DIR)'
 
 ##@ Validation / CI
 
@@ -190,7 +229,13 @@ ci-frontend: frontend-install frontend-all ## Run the complete frontend CI job f
 
 ci-desktop: go-deps wails-install desktop-build ## Run the desktop smoke-build job (system packages must already exist)
 
-ci: ci-go ci-frontend ci-desktop ## Run the complete CI-equivalent pipeline locally
+ci-package: ## Package an existing CI desktop binary as AppImage/tarball and verify checksums
+	VERSION='$(VERSION)' ARCH=x86_64 DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-appimage.sh
+	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
+	$(MAKE) release-checksums DIST_DIR='$(DIST_DIR)'
+	cd '$(DIST_DIR)' && sha256sum --check SHA256SUMS
+
+ci: ci-go ci-frontend ci-desktop ci-package ## Run the complete CI-equivalent pipeline locally
 
 ##@ Cleanup
 
@@ -202,7 +247,10 @@ clean-frontend: ## Remove generated frontend assets while preserving the tracked
 		find '$(FRONTEND_DIR)/dist' -mindepth 1 ! -name '.gitkeep' -delete; \
 	fi
 
-clean: clean-coverage clean-frontend desktop-clean ## Remove generated build/test artifacts
+clean-packaging: ## Remove generated packaging/release artifacts
+	rm -rf build/appimage build/tarball $(DIST_DIR)
+
+clean: clean-coverage clean-frontend desktop-clean clean-packaging ## Remove generated build/test artifacts
 
 clean-all: clean ## Also remove installed frontend dependencies
 	rm -rf $(FRONTEND_DIR)/node_modules
