@@ -18,11 +18,17 @@ Within schema v1, existing required fields and their meaning must not be removed
 
 1. Update `CHANGELOG.md` with a section matching the intended version.
 2. Ensure `main` is green and the version has no unresolved release blockers.
-3. Create and push an annotated or lightweight tag named `vMAJOR.MINOR.PATCH` (or a valid prerelease tag).
-4. The Release workflow validates the tag and changelog, runs the full validation suite, builds the Linux release artifacts, writes SHA-256 checksums and publishes the GitHub Release.
+3. Create and push a tag named `vMAJOR.MINOR.PATCH` (or a valid prerelease tag).
+4. The Release workflow validates the tag/changelog, runs the full validation suite, builds the Linux release artifacts and writes SHA-256 checksums.
+5. GitHub Actions obtains a short-lived OIDC identity and cosign signs every release blob keylessly, producing a `.sigstore.json` verification bundle per artifact.
+6. The workflow immediately verifies each bundle against the exact repository/workflow/tag identity before publishing the GitHub Release.
 
 The release workflow does not modify source files. Release metadata is injected into the binary with linker flags, keeping tagged source trees reproducible.
 
 ## Signing policy
 
-Phase 5 publishes immutable checksums for every release artifact. Cryptographic artifact signing is intentionally not represented as complete until a long-lived signing identity and key-handling process are established; adding Sigstore or another signing mechanism is a release-hardening follow-up rather than silently storing a private signing key in the repository.
+StorVerity does not keep a long-lived private release key in the repository or GitHub secrets. Release artifacts use Sigstore/cosign keyless signing backed by the GitHub Actions OIDC identity. Each artifact and `SHA256SUMS` receives a verification bundle that is published alongside the release files.
+
+A verifier should validate both the artifact digest/signature bundle and the certificate identity for `soyunomas/storverity/.github/workflows/release.yml` at the expected tag. This ties the signature to the repository release workflow rather than to an exportable private key.
+
+Checksums remain useful for simple integrity checking and mirrors, while Sigstore bundles provide cryptographic provenance for the official tagged build.
