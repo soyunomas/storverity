@@ -30,10 +30,10 @@ func (f *fakeRawEngine) Run(_ context.Context, _ rawprobe.Media, cfg rawprobe.Co
 
 type stubRawMedia struct{}
 
-func (stubRawMedia) ReadAt([]byte, int64) (int, error)  { return 0, io.EOF }
+func (stubRawMedia) ReadAt([]byte, int64) (int, error)      { return 0, io.EOF }
 func (stubRawMedia) WriteAt(p []byte, _ int64) (int, error) { return len(p), nil }
-func (stubRawMedia) Sync() error                         { return nil }
-func (stubRawMedia) Close() error                        { return nil }
+func (stubRawMedia) Sync() error                            { return nil }
+func (stubRawMedia) Close() error                           { return nil }
 
 type fakeRawOpener struct {
 	path     string

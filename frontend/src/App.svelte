@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import RawProbePanel from './RawProbePanel.svelte';
   import {
     cancelVerification, listDevices, onVerificationProgress, startVerification,
     type VerificationProgress, type VerificationReport,
@@ -279,10 +280,7 @@
         {/if}
       </section>
 
-      <section class="raw-banner">
-        <div><span class="lock-icon">◆</span><div><strong>Raw capacity probe</strong><p>Direct block-device testing remains locked until Phase 4 safety gates are complete.</p></div></div>
-        <span class="coming-soon">Planned</span>
-      </section>
+      <RawProbePanel device={selected} />
     {:else if !loading}
       <div class="empty-workspace"><h1>No device selected</h1><p>Connect a removable drive and refresh the device list.</p></div>
     {/if}

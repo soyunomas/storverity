@@ -20,12 +20,12 @@ const (
 	PhaseVerify   Phase = "verify"
 	PhaseRestore  Phase = "restore"
 
-	OutcomeSnapshot    Outcome = "snapshot"
-	OutcomeWritten     Outcome = "written"
-	OutcomeValid       Outcome = "valid"
-	OutcomeCorrupt     Outcome = "corrupt"
-	OutcomeReadError   Outcome = "read-error"
-	OutcomeWriteError  Outcome = "write-error"
+	OutcomeSnapshot     Outcome = "snapshot"
+	OutcomeWritten      Outcome = "written"
+	OutcomeValid        Outcome = "valid"
+	OutcomeCorrupt      Outcome = "corrupt"
+	OutcomeReadError    Outcome = "read-error"
+	OutcomeWriteError   Outcome = "write-error"
 	OutcomeRestoreError Outcome = "restore-error"
 )
 
