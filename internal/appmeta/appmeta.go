@@ -1,6 +1,9 @@
 package appmeta
 
-const (
-	Name    = "StorVerity"
-	Version = "0.1.0-dev"
+const Name = "StorVerity"
+
+var (
+	Version   = "0.1.0-dev"
+	Commit    = "unknown"
+	BuildDate = "unknown"
 )
