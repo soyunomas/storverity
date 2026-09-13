@@ -16,18 +16,13 @@ jobs:
         with:
           go-version: '1.25.x'
           cache: false
-      - name: Formatting
-        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
-      - name: Vet core and CLI
-        run: go vet ./cmd/... ./internal/...
-      - name: Test core and CLI
-        run: go test -race -cover ./cmd/... ./internal/...
+      - name: Makefile help smoke test
+        run: make help >/dev/null
+      - name: Go validation
+        run: make ci-go
 
   frontend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,16 +30,8 @@ jobs:
           node-version: '22.16.0'
           cache: npm
           cache-dependency-path: frontend/package.json
-      - name: Install
-        run: npm install
-      - name: Security audit
-        run: npm audit --audit-level=high
-      - name: Unit tests
-        run: npm test
-      - name: Svelte type check
-        run: npm run check
-      - name: Production build
-        run: npm run build
+      - name: Frontend validation
+        run: make ci-frontend
 
   desktop-smoke:
     runs-on: ubuntu-24.04
@@ -59,10 +46,6 @@ jobs:
         with:
           node-version: '22.16.0'
       - name: Linux desktop dependencies
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
-      - name: Resolve Go modules
-        run: go mod tidy
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
-      - name: Build desktop application
-        run: wails build -clean -tags webkit2_41
+        run: make linux-deps
+      - name: Desktop build smoke test
+        run: make ci-desktop
