@@ -138,6 +138,9 @@ func (c *RawProbeController) Run(ctx context.Context, req RawProbeRequest, emit 
 	if err != nil {
 		return rawprobe.Report{}, err
 	}
+
+	// First refresh: the selection must still identify an eligible target before
+	// we ask the OS to open anything writable.
 	d, err := c.refreshDevice(ctx, req.DeviceID)
 	if err != nil {
 		return rawprobe.Report{}, err
@@ -154,12 +157,28 @@ func (c *RawProbeController) Run(ctx context.Context, req RawProbeRequest, emit 
 		return rawprobe.Report{}, fmt.Errorf("open confirmed raw target: %w", err)
 	}
 	defer media.Close()
+
+	// Second refresh: close the discovery/open TOCTOU window. The Linux opener
+	// already verifies major:minor on the opened descriptor; refreshing again
+	// catches a replacement/reinserted device or a mount that appeared after
+	// the pre-open decision but before the first raw write.
+	opened, err := c.refreshDevice(ctx, req.DeviceID)
+	if err != nil {
+		return rawprobe.Report{}, err
+	}
+	if decision := safety.EvaluateRawTest(opened); !decision.Allowed || strings.TrimSpace(opened.MajorMinor) == "" {
+		return rawprobe.Report{}, ErrRawProbeProtected
+	}
+	if rawDeviceFingerprint(opened) != record.fingerprint || opened.Path != d.Path || opened.MajorMinor != d.MajorMinor {
+		return rawprobe.Report{}, ErrRawProbeIdentity
+	}
+
 	seed, err := c.seed()
 	if err != nil {
 		return rawprobe.Report{}, fmt.Errorf("create raw probe seed: %w", err)
 	}
 	report, runErr := c.engine.Run(ctx, media, rawprobe.Config{
-		CapacityBytes: d.SizeBytes,
+		CapacityBytes: opened.SizeBytes,
 		Samples:       req.Samples,
 		BlockBytes:    req.BlockBytes,
 		Seed:          seed,
