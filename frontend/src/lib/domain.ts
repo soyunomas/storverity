@@ -1,6 +1,7 @@
 export type Severity = 'deny' | 'warning';
-export type RegionState = 'pending' | 'writing' | 'valid' | 'corrupt' | 'read-error' | 'write-error';
+export type RegionState = 'pending' | 'writing' | 'valid' | 'corrupt' | 'read-error' | 'write-error' | 'restore-error';
 export type VerificationOutcome = 'written' | 'verified' | 'corrupt' | 'read-error' | 'write-error';
+export type RawProbeOutcome = 'snapshot' | 'written' | 'valid' | 'corrupt' | 'read-error' | 'write-error' | 'restore-error';
 
 export interface SafetyReason { code: string; severity: Severity; message: string }
 export interface RawTestDecision { allowed: boolean; reasons?: SafetyReason[] }
@@ -11,6 +12,11 @@ export interface DeviceCard {
 }
 export interface RegionCell { index: number; state: RegionState; message?: string }
 export interface RegionProgressLike { phase: 'write' | 'verify'; outcome: VerificationOutcome; error?: string }
+export interface RawRegionProgressLike {
+  phase: 'snapshot' | 'write' | 'verify' | 'restore';
+  outcome: RawProbeOutcome;
+  error?: string;
+}
 export interface ProgressLike { phase: 'write' | 'verify'; bytesCompleted: number; bytesTotal: number }
 
 export function formatBytes(value: number): string {
@@ -51,6 +57,20 @@ export function regionStateForProgress(progress: RegionProgressLike): RegionStat
     case 'corrupt': return 'corrupt';
     case 'read-error': return 'read-error';
     case 'write-error': return 'write-error';
+  }
+}
+
+export function rawRegionStateForProgress(progress: RawRegionProgressLike): RegionState | undefined {
+  if (progress.phase === 'snapshot') return undefined;
+  if (progress.phase === 'restore') return progress.outcome === 'restore-error' ? 'restore-error' : undefined;
+  switch (progress.outcome) {
+    case 'written': return 'writing';
+    case 'valid': return 'valid';
+    case 'corrupt': return 'corrupt';
+    case 'read-error': return 'read-error';
+    case 'write-error': return 'write-error';
+    case 'restore-error': return 'restore-error';
+    case 'snapshot': return undefined;
   }
 }
 

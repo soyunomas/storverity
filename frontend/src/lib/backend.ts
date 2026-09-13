@@ -1,4 +1,4 @@
-import type { DeviceCard, VerificationOutcome } from './domain';
+import type { DeviceCard, RawProbeOutcome, VerificationOutcome } from './domain';
 
 export interface VerificationRequest {
   deviceId: string;
@@ -23,11 +23,66 @@ export interface VerificationReport {
   regions: number;
 }
 
+export interface RawProbeChallenge {
+  token: string;
+  deviceId: string;
+  path: string;
+  displayName: string;
+  capacityBytes: number;
+  confirmationText: string;
+  expiresAtUnix: number;
+}
+
+export interface RawProbeRequest {
+  deviceId: string;
+  challengeToken: string;
+  confirmation: string;
+  samples: number;
+  blockBytes: number;
+}
+
+export interface RawProbeProgress {
+  phase: 'snapshot' | 'write' | 'verify' | 'restore';
+  sample: number;
+  samplesTotal: number;
+  offsetBytes: number;
+  outcome: RawProbeOutcome;
+  error?: string;
+}
+
+export interface RawProbeSampleResult {
+  index: number;
+  offsetBytes: number;
+  outcome: RawProbeOutcome;
+  error?: string;
+  restored: boolean;
+  restoreError?: string;
+}
+
+export interface RawProbeReport {
+  advertisedBytes: number;
+  blockBytes: number;
+  samples: number;
+  validSamples: number;
+  corruptSamples: number;
+  readErrors: number;
+  writeErrors: number;
+  restoreErrors: number;
+  validatedThroughBytes: number;
+  suspectFakeCapacity: boolean;
+  restored: boolean;
+  results: RawProbeSampleResult[];
+}
+
 interface DesktopBinding {
   ListDevices(): Promise<DeviceCard[]>;
   StartVerification(request: VerificationRequest): Promise<VerificationReport>;
   CancelVerification(): Promise<boolean>;
   VerificationActive(): Promise<boolean>;
+  PrepareRawProbe(deviceId: string): Promise<RawProbeChallenge>;
+  StartRawProbe(request: RawProbeRequest): Promise<RawProbeReport>;
+  CancelRawProbe(): Promise<boolean>;
+  RawProbeActive(): Promise<boolean>;
 }
 
 interface WailsRuntime {
@@ -63,8 +118,30 @@ export function verificationActive(): Promise<boolean> {
   return desktop().VerificationActive();
 }
 
+export function prepareRawProbe(deviceId: string): Promise<RawProbeChallenge> {
+  return desktop().PrepareRawProbe(deviceId);
+}
+
+export function startRawProbe(request: RawProbeRequest): Promise<RawProbeReport> {
+  return desktop().StartRawProbe(request);
+}
+
+export function cancelRawProbe(): Promise<boolean> {
+  return desktop().CancelRawProbe();
+}
+
+export function rawProbeActive(): Promise<boolean> {
+  return desktop().RawProbeActive();
+}
+
 export function onVerificationProgress(callback: (progress: VerificationProgress) => void): () => void {
   const runtime = window.runtime;
   if (!runtime) return () => undefined;
   return runtime.EventsOn('verification:progress', (payload) => callback(payload as VerificationProgress));
+}
+
+export function onRawProbeProgress(callback: (progress: RawProbeProgress) => void): () => void {
+  const runtime = window.runtime;
+  if (!runtime) return () => undefined;
+  return runtime.EventsOn('rawprobe:progress', (payload) => callback(payload as RawProbeProgress));
 }
