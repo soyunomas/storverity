@@ -17,7 +17,7 @@ GO              ?= go
 
 .PHONY: \
 	help info doctor bootstrap deps lock-update lock-check \
-	go-deps go-mod-check fmt fmt-check vet test test-cover test-cover-html check-core run list \
+	go-deps go-mod-check fmt fmt-check vet test test-rawprobe test-cover test-cover-html check-core run list \
 	frontend-install frontend-update frontend-lock-check frontend-audit frontend-test frontend-check frontend-build frontend-dev frontend-all \
 	wails-install wails-doctor linux-deps dev build desktop-dev desktop-build desktop-clean \
 	check ci ci-go ci-frontend ci-desktop \
@@ -34,6 +34,7 @@ help: ## Show this help message
 	@printf '  make doctor          Check the local toolchain\n'
 	@printf '  make bootstrap       Install pinned project dependencies\n'
 	@printf '  make check           Run core + frontend validation\n'
+	@printf '  make test-rawprobe   Run raw-probe tests without block-device access\n'
 	@printf '  make dev             Start the Wails development app\n'
 	@printf '  make ci              Run the full CI-equivalent validation\n\n'
 
@@ -102,6 +103,9 @@ vet: ## Run go vet on the storage core and CLI
 
 test: ## Run race-enabled Go tests
 	$(GO) test -race $(GO_PACKAGES)
+
+test-rawprobe: ## Run raw-probe/safety tests without accessing real block devices
+	$(GO) test -race ./internal/rawprobe ./internal/safety ./internal/appservice
 
 test-cover: ## Run Go tests with coverage and print the coverage summary
 	$(GO) test -race -coverprofile=$(COVERAGE_FILE) $(GO_PACKAGES)
