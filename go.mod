@@ -1,5 +1,5 @@
 module github.com/soyunomas/storverity
 
-go 1.23
+go 1.25.0
 
 require github.com/wailsapp/wails/v2 v2.15.0

@@ -1,5 +1,3 @@
-//go:build desktop || dev
-
 package main
 
 import (
@@ -39,7 +37,7 @@ func main() {
 		Height:           760,
 		MinWidth:         900,
 		MinHeight:        620,
-		BackgroundColour: &options.RGBA{R: 10, G: 15, B: 24, A: 1},
+		BackgroundColour: &options.RGBA{R: 10, G: 15, B: 24, A: 255},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
