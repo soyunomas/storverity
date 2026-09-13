@@ -16,10 +16,10 @@ NPM             ?= npm
 GO              ?= go
 
 .PHONY: \
-	help info doctor bootstrap deps \
-	go-deps fmt fmt-check vet test test-cover test-cover-html check-core run list \
-	frontend-install frontend-audit frontend-test frontend-check frontend-build frontend-dev frontend-all \
-	wails-install linux-deps desktop-dev desktop-build desktop-clean \
+	help info doctor bootstrap deps lock-update lock-check \
+	go-deps go-mod-check fmt fmt-check vet test test-cover test-cover-html check-core run list \
+	frontend-install frontend-update frontend-lock-check frontend-audit frontend-test frontend-check frontend-build frontend-dev frontend-all \
+	wails-install wails-doctor linux-deps dev build desktop-dev desktop-build desktop-clean \
 	check ci ci-go ci-frontend ci-desktop \
 	clean clean-coverage clean-frontend clean-all
 
@@ -32,9 +32,9 @@ help: ## Show this help message
 		/^[a-zA-Z0-9_.-]+:.*## / {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@printf '\nCommon examples:\n'
 	@printf '  make doctor          Check the local toolchain\n'
-	@printf '  make bootstrap       Install project dependencies\n'
+	@printf '  make bootstrap       Install pinned project dependencies\n'
 	@printf '  make check           Run core + frontend validation\n'
-	@printf '  make desktop-dev     Start the Wails development app\n'
+	@printf '  make dev             Start the Wails development app\n'
 	@printf '  make ci              Run the full CI-equivalent validation\n\n'
 
 info: ## Print project build configuration
@@ -46,7 +46,7 @@ info: ## Print project build configuration
 	@printf 'Go baseline:       %s\n' '$(GO_VERSION)'
 	@printf 'Node baseline:     %s\n' '$(NODE_VERSION)'
 
-# doctor intentionally checks presence first and prints versions second so failures are actionable.
+# doctor checks presence first so failures are actionable before printing versions.
 doctor: ## Check required development tools and print their versions
 	@set -e; \
 	for tool in git $(GO) node $(NPM); do \
@@ -62,14 +62,28 @@ doctor: ## Check required development tools and print their versions
 		echo 'wails: not installed (run: make wails-install)'; \
 	fi
 
-bootstrap: deps wails-install ## Install Go, frontend and Wails development dependencies
+bootstrap: deps wails-install ## Install pinned Go/frontend dependencies and the Wails CLI
 
-deps: go-deps frontend-install ## Install project dependencies without Wails CLI
+deps: go-deps frontend-install ## Install project dependencies from committed lock data
+
+lock-update: ## Regenerate Go and npm dependency lock data intentionally
+	$(GO) mod tidy
+	cd $(FRONTEND_DIR) && $(NPM) install --package-lock-only --ignore-scripts
+	@echo 'Updated go.mod/go.sum and $(FRONTEND_DIR)/package-lock.json'
+
+lock-check: go-mod-check frontend-lock-check ## Verify committed dependency metadata is current
 
 ##@ Go core / CLI
 
-go-deps: ## Resolve Go module dependencies
+go-deps: ## Download Go modules using go.mod/go.sum
 	$(GO) mod download
+
+go-mod-check: ## Fail if go.mod or go.sum is not tidy/reproducible
+	$(GO) mod tidy
+	@git diff --exit-code -- go.mod go.sum || { \
+		echo 'error: Go module metadata changed; run: make lock-update' >&2; \
+		exit 1; \
+	}
 
 fmt: ## Format all tracked Go source files
 	@git ls-files '*.go' -z | xargs -0 -r gofmt -w
@@ -97,7 +111,7 @@ test-cover-html: test-cover ## Generate an HTML Go coverage report
 	$(GO) tool cover -html=$(COVERAGE_FILE) -o $(COVERAGE_HTML)
 	@echo 'Coverage report: $(COVERAGE_HTML)'
 
-check-core: fmt-check vet test ## Run all Go core/CLI checks
+check-core: fmt-check go-mod-check vet test ## Run all Go core/CLI checks
 
 run: list ## Alias for the diagnostic device-list CLI
 
@@ -106,8 +120,18 @@ list: ## List discovered storage devices as JSON
 
 ##@ Frontend
 
-frontend-install: ## Install Svelte/TypeScript dependencies
+frontend-install: ## Install exact frontend dependencies from package-lock.json
+	cd $(FRONTEND_DIR) && $(NPM) ci
+
+frontend-update: ## Update/install frontend dependencies and refresh package-lock.json
 	cd $(FRONTEND_DIR) && $(NPM) install
+
+frontend-lock-check: ## Fail if package.json and package-lock.json are inconsistent
+	cd $(FRONTEND_DIR) && $(NPM) install --package-lock-only --ignore-scripts
+	@git diff --exit-code -- $(FRONTEND_DIR)/package-lock.json || { \
+		echo 'error: npm lockfile changed; run: make lock-update' >&2; \
+		exit 1; \
+	}
 
 frontend-audit: ## Audit frontend dependencies; fail on high/critical issues
 	cd $(FRONTEND_DIR) && $(NPM) audit --audit-level=high
@@ -124,16 +148,23 @@ frontend-build: ## Build production frontend assets
 frontend-dev: ## Start the standalone Vite development server
 	cd $(FRONTEND_DIR) && $(NPM) run dev
 
-frontend-all: frontend-audit frontend-test frontend-check frontend-build ## Run all frontend validation except dependency installation
+frontend-all: frontend-audit frontend-test frontend-check frontend-build ## Run all frontend validation after dependencies are installed
 
 ##@ Wails desktop
 
 wails-install: ## Install the pinned Wails CLI
 	$(GO) install github.com/wailsapp/wails/v2/cmd/wails@$(WAILS_VERSION)
 
+wails-doctor: ## Run Wails environment diagnostics
+	$(WAILS) doctor
+
 linux-deps: ## Install Ubuntu/Debian packages required for Wails/WebKitGTK
 	sudo apt-get update
 	sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+dev: desktop-dev ## Alias for the Wails desktop development app
+
+build: desktop-build ## Alias for a production desktop build
 
 desktop-dev: ## Start the Wails desktop app in development mode
 	$(WAILS) dev -tags '$(WAILS_TAGS)'
@@ -146,12 +177,12 @@ desktop-clean: ## Remove Wails desktop build output
 
 ##@ Validation / CI
 
-check: check-core frontend-all ## Run all non-packaging validation
+check: check-core frontend-install frontend-all ## Run all non-packaging validation
 
-ci-go: fmt-check vet ## Run the Go CI checks including race + coverage
+ci-go: fmt-check go-mod-check vet ## Run the Go CI checks including race + coverage
 	$(GO) test -race -cover $(GO_PACKAGES)
 
-ci-frontend: frontend-install frontend-all ## Run the complete frontend CI job
+ci-frontend: frontend-install frontend-all ## Run the complete frontend CI job from package-lock.json
 
 ci-desktop: go-deps wails-install desktop-build ## Run the desktop smoke-build job (system packages must already exist)
 
