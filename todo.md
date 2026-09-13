@@ -75,7 +75,8 @@ Exit criteria: filesystem verification is independently testable without USB har
 - [x] Define frontend region states: `pending`, `writing`, `valid`, `corrupt`, `read-error`, `write-error`.
 - [ ] Render a scalable region grid inspired by ValiDrive without copying its branding/assets.
 - [ ] Display bytes processed, phase, elapsed time and overall progress.
-- [ ] Wire cancellation from UI to Go context cancellation.
+- [x] Provide a concurrency-safe Go session manager that can cancel the active verification and reject duplicate starts.
+- [ ] Wire the Wails/Svelte Stop action to the Go cancellation manager.
 - [x] Run the existing filesystem verifier only on an explicitly selected mounted filesystem, after refreshing device identity and mount ownership.
 
 ### 3.5 Phase 3 tests and CI
