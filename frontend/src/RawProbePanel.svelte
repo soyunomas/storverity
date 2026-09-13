@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import ReportActions from './ReportActions.svelte';
   import {
     cancelRawProbe, onRawProbeProgress, prepareRawProbe, startRawProbe,
     type RawProbeChallenge, type RawProbeProgress, type RawProbeReport,
@@ -18,6 +19,7 @@
   let confirmation = '';
   let error = '';
   let report: RawProbeReport | undefined;
+  let reportReady = false;
   let progress: RawProbeProgress | undefined;
   let regions: RegionCell[] = [];
   let currentDeviceId = '';
@@ -36,6 +38,7 @@
     confirmation = '';
     error = '';
     report = undefined;
+    reportReady = false;
     progress = undefined;
     regions = [];
   }
@@ -56,6 +59,7 @@
     if (!canArm) return;
     error = '';
     report = undefined;
+    reportReady = false;
     regions = [];
     progress = undefined;
     try {
@@ -81,14 +85,16 @@
         deviceId: armed.deviceId,
         challengeToken: armed.token,
         confirmation,
-        samples: 64,
+        samples: 512,
         blockBytes: 4096,
       });
       state = 'success';
+      reportReady = true;
       challenge = undefined;
       confirmation = '';
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      reportReady = true;
       if (message.toLowerCase().includes('canceled') || message.toLowerCase().includes('cancelled')) {
         state = 'idle';
       } else {
@@ -119,7 +125,7 @@
     <span class="mode-badge raw-badge">Direct block writes</span>
   </div>
 
-  <div class="raw-warning">
+  <div class="raw-warning" role="note">
     <strong>Data-loss risk.</strong>
     <span>StorVerity saves and restores sampled blocks, but power loss, disconnects, fraudulent firmware, or restoration errors can still destroy data. Use only expendable media.</span>
   </div>
@@ -158,20 +164,22 @@
           <div class="progress-number">{progress ? `${progress.sample + 1}/${progress.samplesTotal}` : ''}</div>
         </div>
         <div class="region-grid" aria-label="Raw capacity sample map">
-          {#each regions as region}<span class={`region ${region.state}`} title={regionTitle(region)}></span>{/each}
+          {#each regions as region}<span class={`region ${region.state}`} title={regionTitle(region)} aria-label={regionTitle(region)}></span>{/each}
         </div>
         <div class="legend"><span><i class="pending"></i>Pending</span><span><i class="writing"></i>Written</span><span><i class="valid"></i>Verified</span><span><i class="corrupt"></i>Mismatch / I/O error</span><span><i class="restore-error"></i>Restore error</span></div>
       </div>
     {/if}
 
-    {#if error}<div class="alert error"><strong>Raw probe failed</strong><span>{error}</span></div>{/if}
+    {#if error}<div class="alert error" role="alert"><strong>Raw probe failed</strong><span>{error}</span></div>{/if}
     {#if state === 'success' && report}
-      <div class:raw-danger={report.suspectFakeCapacity || report.restoreErrors > 0} class="raw-result">
+      <div class:raw-danger={report.suspectFakeCapacity || report.restoreErrors > 0} class="raw-result" role="status">
         <strong>{report.suspectFakeCapacity ? 'Capacity is suspicious' : 'Sampled capacity validated'}</strong>
         <span>{report.validSamples}/{report.samples} samples verified · {report.corruptSamples} mismatches · {report.readErrors} read errors · {report.writeErrors} write errors · {report.restoreErrors} restore errors.</span>
         <small>{report.restored ? 'All touched samples reported restored.' : 'Restoration was incomplete. Do not trust the device contents.'}</small>
       </div>
     {/if}
+
+    {#if reportReady}<ReportActions />{/if}
 
     <div class="action-row raw-actions">
       <p>This is a sampled fraud detector, not an exhaustive media scan. It never accepts a manually entered device path.</p>

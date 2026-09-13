@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import RawProbePanel from './RawProbePanel.svelte';
+  import ReportActions from './ReportActions.svelte';
   import {
     cancelVerification, listDevices, onVerificationProgress, startVerification,
     type VerificationProgress, type VerificationReport,
@@ -31,6 +32,7 @@
   let regions: RegionCell[] = [];
   let progress: VerificationProgress | undefined;
   let report: VerificationReport | undefined;
+  let reportReady = false;
   let startedAt = 0;
   let elapsedSeconds = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
@@ -52,6 +54,7 @@
     runError = '';
     progress = undefined;
     report = undefined;
+    reportReady = false;
     regions = [];
   }
 
@@ -105,6 +108,7 @@
     runState = 'running';
     runError = '';
     report = undefined;
+    reportReady = false;
     progress = undefined;
     regions = [];
     startTimer();
@@ -116,8 +120,10 @@
         chunkBytes: 16 * MiB,
       });
       runState = 'success';
+      reportReady = true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      reportReady = true;
       const lowered = message.toLowerCase();
       if (lowered.includes('canceled') || lowered.includes('cancelled')) {
         runState = 'idle';
@@ -178,7 +184,7 @@
         <div class="sidebar-state"><p>No block devices found.</p></div>
       {:else}
         {#each devices as device (device.id)}
-          <button class:selected={device.id === selectedId} class="device-card" on:click={() => chooseDevice(device)}>
+          <button class:selected={device.id === selectedId} class="device-card" aria-pressed={device.id === selectedId} on:click={() => chooseDevice(device)}>
             <span class="drive-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5zM8 15h.01M11 15h5"/></svg></span>
             <span class="device-copy">
               <span class="device-name">{device.displayName}</span>
@@ -190,7 +196,7 @@
       {/if}
     </div>
 
-    <footer class="sidebar-footer"><span class="safe-dot"></span>Raw block writes are disabled</footer>
+    <footer class="sidebar-footer"><span class="safe-dot"></span>Raw probing requires explicit safety confirmation</footer>
   </aside>
 
   <main class="workspace">
@@ -247,7 +253,7 @@
             {#if regions.length > 0}
               <div class="region-grid" aria-label="Verification region map">
                 {#each regions as region}
-                  <span class={`region ${region.state}`} title={regionTitle(region)}></span>
+                  <span class={`region ${region.state}`} title={regionTitle(region)} aria-label={regionTitle(region)}></span>
                 {/each}
               </div>
             {:else}
@@ -259,8 +265,10 @@
             <div class="legend"><span><i class="pending"></i>Pending</span><span><i class="writing"></i>Written</span><span><i class="valid"></i>Verified</span><span><i class="corrupt"></i>Error</span></div>
           </div>
 
-          {#if runError}<div class="alert error"><strong>Verification failed</strong><span>{runError}</span></div>{/if}
-          {#if runState === 'success' && report}<div class="alert success"><strong>Verification completed</strong><span>{formatBytes(report.bytesVerified)} read back successfully in {elapsedSeconds}s.</span></div>{/if}
+          {#if runError}<div class="alert error" role="alert"><strong>Verification failed</strong><span>{runError}</span></div>{/if}
+          {#if runState === 'success' && report}<div class="alert success" role="status"><strong>Verification completed</strong><span>{formatBytes(report.bytesVerified)} read back successfully in {elapsedSeconds}s.</span></div>{/if}
+
+          {#if reportReady}<ReportActions />{/if}
 
           <div class="action-row">
             <p>This check writes and removes temporary files on <strong>{selectedMount}</strong>. It never opens the raw block device.</p>
