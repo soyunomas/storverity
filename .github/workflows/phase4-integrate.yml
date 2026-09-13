@@ -1,0 +1,55 @@
+name: Phase4 integrate
+
+on:
+  push:
+    branches: [phase4-raw-probe]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: false
+      - name: Format Go and wire raw probe panel
+        run: |
+          gofmt -w internal/rawprobe internal/appservice internal/device main.go
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/src/App.svelte')
+          text = path.read_text()
+          import_anchor = "  import { onMount } from 'svelte';\n"
+          import_line = "  import RawProbePanel from './RawProbePanel.svelte';\n"
+          if import_line not in text:
+              if import_anchor not in text:
+                  raise SystemExit('App.svelte import anchor not found')
+              text = text.replace(import_anchor, import_anchor + import_line, 1)
+
+          old = '''      <section class="raw-banner">
+        <div><span class="lock-icon">◆</span><div><strong>Raw capacity probe</strong><p>Direct block-device testing remains locked until Phase 4 safety gates are complete.</p></div></div>
+        <span class="coming-soon">Planned</span>
+      </section>'''
+          new = '''      <RawProbePanel device={selected} />'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif new not in text:
+              raise SystemExit('App.svelte raw banner anchor not found')
+          path.write_text(text)
+          PY
+      - name: Commit integration changes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add internal/rawprobe internal/appservice internal/device main.go frontend/src/App.svelte
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'chore: format and wire phase 4 integration'
+          git push
