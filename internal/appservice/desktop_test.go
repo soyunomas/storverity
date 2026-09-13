@@ -78,7 +78,7 @@ func TestDesktopEmitsProgress(t *testing.T) {
 		LikelyExternal: true, MountPoints: []string{"/media/USB"},
 	}}}
 	engine := &fakeVerifier{
-		report: verifyfs.Report{Regions: 1, BytesWritten: 1, BytesVerified: 1},
+		report:   verifyfs.Report{Regions: 1, BytesWritten: 1, BytesVerified: 1},
 		progress: []verifyfs.Progress{{Phase: verifyfs.PhaseWrite, Region: 0, RegionsTotal: 1, BytesCompleted: 1, BytesTotal: 1}},
 	}
 	var got []VerificationProgress

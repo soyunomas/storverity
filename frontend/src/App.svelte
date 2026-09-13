@@ -112,7 +112,8 @@
       runState = 'success';
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (runState === 'stopping' || message.toLowerCase().includes('canceled')) {
+      const lowered = message.toLowerCase();
+      if (lowered.includes('canceled') || lowered.includes('cancelled')) {
         runState = 'idle';
       } else {
         runState = 'error';
