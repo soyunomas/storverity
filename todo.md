@@ -13,12 +13,13 @@ This file is the execution checklist for the project. A phase is only marked com
 - Add tests before publishing a phase. Prefer fault injection and temporary directories over real hardware in CI.
 - Keep commits phase-oriented and small enough to review.
 - Keep desktop dependency checks separate from the UI-independent Go core.
+- Keep the self-documenting `Makefile` as the local/CI entry point so development commands do not drift from GitHub Actions.
 
 ## Phase 0 — Repository foundation — COMPLETE
 
 - [x] Create Go module and repository layout.
 - [x] Add architecture and roadmap documentation.
-- [x] Add `Makefile` checks.
+- [x] Add a self-documenting `Makefile` with `make help` and grouped development/CI targets.
 - [x] Add GitHub Actions for formatting, vetting and race-enabled tests.
 - [x] Establish application metadata/version package.
 
@@ -47,7 +48,7 @@ Exit criteria: discovery never writes to storage and unsafe/raw-ineligible devic
 
 Exit criteria: filesystem verification is independently testable without USB hardware.
 
-## Phase 3 — Wails/Svelte desktop application — IN PROGRESS
+## Phase 3 — Wails/Svelte desktop application — COMPLETE
 
 ### 3.1 Application service contract
 
@@ -80,18 +81,20 @@ Exit criteria: filesystem verification is independently testable without USB har
 - [x] Provide a concurrency-safe Go session manager that can cancel the active verification and reject duplicate starts.
 - [x] Wire the Wails/Svelte Stop action to the Go cancellation manager.
 - [x] Run the existing filesystem verifier only on an explicitly selected mounted filesystem, after refreshing device identity and mount ownership.
-- [ ] Surface typed per-region corruption/read/write failures from the verifier into the live map instead of only the overall error alert.
+- [x] Surface typed per-region corruption/read/write failures from the verifier into the live map with region-level failure detail.
 
 ### 3.5 Phase 3 tests and CI
 
 - [x] Go unit tests for the application service.
-- [x] Frontend unit tests for formatting, device-state mapping, progress calculation and region-state reducer.
+- [x] Add injected corruption, read-error and write-error tests for region failure propagation.
+- [x] Frontend unit tests for formatting, device-state mapping, progress calculation, typed outcomes and region-state reducer.
 - [x] Frontend dependency audit, Svelte type check and production build in CI.
-- [x] Race-enabled core tests, vetting and formatting checks in CI.
+- [x] Race-enabled core tests, vetting, formatting and tidy-module checks in CI.
 - [x] Wails v2.15 build smoke test on Ubuntu 24.04 with WebKitGTK 4.1.
-- [ ] Commit reproducible Go/npm dependency lock data rather than generating it only in the integration job.
+- [x] Commit reproducible Go/npm dependency lock data and use `npm ci` for frontend/Wails builds.
+- [x] Route local and GitHub Actions validation through self-documenting `make ci-*` targets and smoke-test `make help`.
 
-Exit criteria: the desktop app lists real devices, explains safety state, can run/cancel the non-destructive filesystem verifier, and visualizes progress without any raw-device write capability. Before Phase 3 is marked complete, per-region error states and dependency lock data must also be finished.
+Exit criteria: the desktop app lists real devices, explains safety state, can run/cancel the non-destructive filesystem verifier, visualizes success/failure per region, builds reproducibly from committed dependency lock data, and exposes no raw-device write capability.
 
 ## Phase 4 — Raw destructive capacity probe — PLANNED
 
