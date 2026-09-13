@@ -16,10 +16,55 @@ jobs:
         with:
           go-version: '1.25.x'
           cache: false
-      - name: Normalize generated source and packaging scripts
+      - name: Normalize source and wire productization UI
         run: |
           git ls-files '*.go' -z | xargs -0 -r gofmt -w
           chmod +x scripts/package-appimage.sh scripts/package-tarball.sh packaging/appimage/AppRun
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app = Path('frontend/src/App.svelte')
+          s = app.read_text()
+          s = s.replace("  import RawProbePanel from './RawProbePanel.svelte';\n", "  import RawProbePanel from './RawProbePanel.svelte';\n  import ReportActions from './ReportActions.svelte';\n", 1) if "ReportActions from './ReportActions.svelte'" not in s else s
+          s = s.replace("  let report: VerificationReport | undefined;\n", "  let report: VerificationReport | undefined;\n  let reportReady = false;\n", 1) if "let reportReady = false;" not in s else s
+          s = s.replace("    report = undefined;\n    regions = [];\n", "    report = undefined;\n    reportReady = false;\n    regions = [];\n", 1)
+          s = s.replace("    report = undefined;\n    progress = undefined;\n    regions = [];\n    startTimer();", "    report = undefined;\n    reportReady = false;\n    progress = undefined;\n    regions = [];\n    startTimer();", 1)
+          s = s.replace("      runState = 'success';\n", "      runState = 'success';\n      reportReady = true;\n", 1)
+          s = s.replace("      const message = error instanceof Error ? error.message : String(error);\n", "      const message = error instanceof Error ? error.message : String(error);\n      reportReady = true;\n", 1)
+          s = s.replace("class=\"device-card\" on:click", "class=\"device-card\" aria-pressed={device.id === selectedId} on:click")
+          s = s.replace("Raw block writes are disabled", "Raw probing requires explicit safety confirmation")
+          s = s.replace("title={regionTitle(region)}></span>", "title={regionTitle(region)} aria-label={regionTitle(region)}></span>")
+          s = s.replace('<div class="alert error"><strong>Verification failed</strong>', '<div class="alert error" role="alert"><strong>Verification failed</strong>')
+          s = s.replace('<div class="alert success"><strong>Verification completed</strong>', '<div class="alert success" role="status"><strong>Verification completed</strong>')
+          marker = '          <div class="action-row">\n'
+          if '<ReportActions />' not in s and marker in s:
+              s = s.replace(marker, '          {#if reportReady}<ReportActions />{/if}\n\n' + marker, 1)
+          app.write_text(s)
+
+          raw = Path('frontend/src/RawProbePanel.svelte')
+          s = raw.read_text()
+          s = s.replace("  import { onMount } from 'svelte';\n", "  import { onMount } from 'svelte';\n  import ReportActions from './ReportActions.svelte';\n", 1) if "ReportActions from './ReportActions.svelte'" not in s else s
+          s = s.replace("  let report: RawProbeReport | undefined;\n", "  let report: RawProbeReport | undefined;\n  let reportReady = false;\n", 1) if "let reportReady = false;" not in s else s
+          s = s.replace("    report = undefined;\n    progress = undefined;\n    regions = [];\n", "    report = undefined;\n    reportReady = false;\n    progress = undefined;\n    regions = [];\n", 1)
+          s = s.replace("    report = undefined;\n    regions = [];\n    progress = undefined;\n", "    report = undefined;\n    reportReady = false;\n    regions = [];\n    progress = undefined;\n", 1)
+          s = s.replace("        samples: 64,", "        samples: 512,")
+          s = s.replace("      state = 'success';\n", "      state = 'success';\n      reportReady = true;\n", 1)
+          s = s.replace("      const message = err instanceof Error ? err.message : String(err);\n", "      const message = err instanceof Error ? err.message : String(err);\n      reportReady = true;\n", 1)
+          s = s.replace('<div class="raw-warning">', '<div class="raw-warning" role="note">')
+          s = s.replace("title={regionTitle(region)}></span>", "title={regionTitle(region)} aria-label={regionTitle(region)}></span>")
+          s = s.replace('<div class="alert error"><strong>Raw probe failed</strong>', '<div class="alert error" role="alert"><strong>Raw probe failed</strong>')
+          s = s.replace('class="raw-result">', 'class="raw-result" role="status">')
+          marker = '    <div class="action-row raw-actions">\n'
+          if '<ReportActions />' not in s and marker in s:
+              s = s.replace(marker, '    {#if reportReady}<ReportActions />{/if}\n\n' + marker, 1)
+          raw.write_text(s)
+
+          css = Path('frontend/src/app.css')
+          s = css.read_text()
+          if 'Phase 5 accessibility focus' not in s:
+              s += '''\n\n/* Phase 5 accessibility focus and reduced-motion support. */\n:where(button, select, input):focus-visible {\n  outline: 2px solid #72e7c0;\n  outline-offset: 2px;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  *, *::before, *::after {\n    animation-duration: 0.01ms !important;\n    animation-iteration-count: 1 !important;\n    transition-duration: 0.01ms !important;\n    scroll-behavior: auto !important;\n  }\n}\n'''
+              css.write_text(s)
+          PY
       - name: Commit integration changes
         run: |
           git config user.name github-actions[bot]
@@ -28,5 +73,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'chore: normalize phase 5 sources'
+          git commit -m 'chore: wire phase 5 productization UI'
           git push
