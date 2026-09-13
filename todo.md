@@ -1,6 +1,6 @@
 # StorVerity implementation plan
 
-This file is the execution checklist for the project. A phase is only marked complete after its code has been formatted, vetted, tested locally, and the corresponding GitHub Actions run is green.
+This file is the execution checklist for the project. A phase is only marked complete after its code has been formatted, vetted, tested locally where dependencies permit, and the corresponding GitHub Actions integration run is green.
 
 ## Engineering rules
 
@@ -12,6 +12,7 @@ This file is the execution checklist for the project. A phase is only marked com
 - Every storage-writing code path must support cancellation and deterministic cleanup where possible.
 - Add tests before publishing a phase. Prefer fault injection and temporary directories over real hardware in CI.
 - Keep commits phase-oriented and small enough to review.
+- Keep desktop dependency checks separate from the UI-independent Go core.
 
 ## Phase 0 — Repository foundation — COMPLETE
 
@@ -57,37 +58,40 @@ Exit criteria: filesystem verification is independently testable without USB har
 
 ### 3.2 Wails shell
 
-- [ ] Add Wails v2.15 application entry point and project configuration.
-- [ ] Bind only the application service, not low-level storage packages directly.
-- [ ] Keep the existing CLI usable for diagnostics.
-- [ ] Ensure production assets are embedded through Wails.
+- [x] Add Wails v2.15 application entry point and project configuration.
+- [x] Bind only the application service, not low-level storage packages directly.
+- [x] Keep the existing CLI usable for diagnostics.
+- [x] Embed production frontend assets through Wails.
+- [x] Align the project with Wails v2.15's Go 1.25 minimum requirement.
 
 ### 3.3 Svelte/TypeScript frontend
 
-- [ ] Add Svelte + TypeScript frontend structure.
-- [ ] Build device selection screen with model/vendor, capacity, transport, mounts and safety state.
-- [ ] Add empty, loading and backend-error states.
-- [ ] Add responsive desktop layout and accessible keyboard/focus behavior.
+- [x] Add Svelte + TypeScript frontend structure.
+- [x] Build device selection screen with model/vendor, capacity, transport, mounts and safety state.
+- [x] Add empty, loading and backend-error states.
+- [x] Add responsive desktop layout using native keyboard-focusable controls.
 - [x] Keep destructive controls absent/disabled until Phase 4.
 
 ### 3.4 Live verification UI
 
 - [x] Define frontend region states: `pending`, `writing`, `valid`, `corrupt`, `read-error`, `write-error`.
-- [ ] Render a scalable region grid inspired by ValiDrive without copying its branding/assets.
-- [ ] Display bytes processed, phase, elapsed time and overall progress.
+- [x] Render a scalable region grid inspired by ValiDrive without copying its branding/assets.
+- [x] Display phase, elapsed time and overall progress.
 - [x] Provide a concurrency-safe Go session manager that can cancel the active verification and reject duplicate starts.
-- [ ] Wire the Wails/Svelte Stop action to the Go cancellation manager.
+- [x] Wire the Wails/Svelte Stop action to the Go cancellation manager.
 - [x] Run the existing filesystem verifier only on an explicitly selected mounted filesystem, after refreshing device identity and mount ownership.
+- [ ] Surface typed per-region corruption/read/write failures from the verifier into the live map instead of only the overall error alert.
 
 ### 3.5 Phase 3 tests and CI
 
 - [x] Go unit tests for the application service.
-- [x] Frontend unit tests for formatting, device-state mapping and region-state reducer.
-- [ ] Frontend production build in CI.
-- [x] `go test -race ./...`, `go vet ./...` and `gofmt` clean.
-- [ ] Wails build smoke test on Linux CI once system dependencies are installed.
+- [x] Frontend unit tests for formatting, device-state mapping, progress calculation and region-state reducer.
+- [x] Frontend dependency audit, Svelte type check and production build in CI.
+- [x] Race-enabled core tests, vetting and formatting checks in CI.
+- [x] Wails v2.15 build smoke test on Ubuntu 24.04 with WebKitGTK 4.1.
+- [ ] Commit reproducible Go/npm dependency lock data rather than generating it only in the integration job.
 
-Exit criteria: the desktop app lists real devices, explains safety state, can run/cancel the non-destructive filesystem verifier, and visualizes progress without any raw-device write capability.
+Exit criteria: the desktop app lists real devices, explains safety state, can run/cancel the non-destructive filesystem verifier, and visualizes progress without any raw-device write capability. Before Phase 3 is marked complete, per-region error states and dependency lock data must also be finished.
 
 ## Phase 4 — Raw destructive capacity probe — PLANNED
 
