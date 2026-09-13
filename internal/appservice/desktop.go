@@ -28,6 +28,7 @@ type Desktop struct {
 	verification *VerificationManager
 	rawControl   *RawProbeController
 	rawProbe     *RawProbeManager
+	reports      *ReportManager
 	emitProgress ProgressSink
 	emitRaw      RawProgressSink
 	listTimeout  time.Duration
@@ -41,17 +42,23 @@ func NewDesktop(source DeviceSource, engine FilesystemVerifier, emit ProgressSin
 	return &Desktop{
 		devices:      New(source),
 		verification: NewVerificationManager(controller),
+		reports:      NewReportManager(nil),
 		emitProgress: emit,
 		listTimeout:  defaultListTimeout,
 	}
 }
 
 func NewLinuxDesktop(emit ProgressSink, emitRaw RawProgressSink) *Desktop {
+	return NewLinuxDesktopWithReportSaver(emit, emitRaw, nil)
+}
+
+func NewLinuxDesktopWithReportSaver(emit ProgressSink, emitRaw RawProgressSink, saver ReportSaver) *Desktop {
 	source := device.NewScanner()
 	desktop := NewDesktop(source, verifyfs.New(), emit)
 	rawControl := NewRawProbeController(source, rawprobe.New(), RawMediaOpenFunc(rawprobe.OpenLinuxBlockDevice))
 	desktop.rawControl = rawControl
 	desktop.rawProbe = NewRawProbeManager(rawControl)
+	desktop.reports = NewReportManager(saver)
 	desktop.emitRaw = emitRaw
 	return desktop
 }
@@ -71,7 +78,8 @@ func (d *Desktop) ListDevices() ([]DeviceCard, error) {
 	return d.devices.ListDevices(ctx)
 }
 
-// StartVerification runs the non-destructive filesystem verifier.
+// StartVerification runs the non-destructive filesystem verifier and records a
+// report for both successful and failed/cancelled runs that entered execution.
 func (d *Desktop) StartVerification(req VerificationRequest) (verifyfs.Report, error) {
 	if d == nil || d.verification == nil {
 		return verifyfs.Report{}, errors.New("desktop service is not configured")
@@ -80,11 +88,16 @@ func (d *Desktop) StartVerification(req VerificationRequest) (verifyfs.Report, e
 		return verifyfs.Report{}, err
 	}
 	defer d.endOperation("filesystem")
-	return d.verification.Run(context.Background(), req, func(progress VerificationProgress) {
+
+	card := d.snapshotReportDevice(req.DeviceID)
+	started := time.Now().UTC()
+	result, runErr := d.verification.Run(context.Background(), req, func(progress VerificationProgress) {
 		if d.emitProgress != nil {
 			d.emitProgress(progress)
 		}
 	})
+	d.recordFilesystemReport(card, req, result, runErr, started, time.Now().UTC())
+	return result, runErr
 }
 
 func (d *Desktop) CancelVerification() bool {
@@ -104,6 +117,8 @@ func (d *Desktop) PrepareRawProbe(deviceID string) (RawProbeChallenge, error) {
 	return d.rawControl.Prepare(ctx, deviceID)
 }
 
+// StartRawProbe runs the destructive sampled probe and records the restoration
+// and fake-capacity result even when the operation returns an error.
 func (d *Desktop) StartRawProbe(req RawProbeRequest) (rawprobe.Report, error) {
 	if d == nil || d.rawProbe == nil {
 		return rawprobe.Report{}, errors.New("raw probe service is not configured")
@@ -112,11 +127,16 @@ func (d *Desktop) StartRawProbe(req RawProbeRequest) (rawprobe.Report, error) {
 		return rawprobe.Report{}, err
 	}
 	defer d.endOperation("raw")
-	return d.rawProbe.Run(context.Background(), req, func(progress RawProbeProgress) {
+
+	card := d.snapshotReportDevice(req.DeviceID)
+	started := time.Now().UTC()
+	result, runErr := d.rawProbe.Run(context.Background(), req, func(progress RawProbeProgress) {
 		if d.emitRaw != nil {
 			d.emitRaw(progress)
 		}
 	})
+	d.recordRawReport(card, req, result, runErr, started, time.Now().UTC())
+	return result, runErr
 }
 
 func (d *Desktop) CancelRawProbe() bool {
