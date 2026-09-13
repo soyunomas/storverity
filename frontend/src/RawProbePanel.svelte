@@ -92,10 +92,12 @@
       state = 'success';
       reportReady = true;
       reportReady = true;
+      reportReady = true;
       challenge = undefined;
       confirmation = '';
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      reportReady = true;
       reportReady = true;
       reportReady = true;
       if (message.toLowerCase().includes('canceled') || message.toLowerCase().includes('cancelled')) {
