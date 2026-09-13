@@ -50,10 +50,10 @@ Exit criteria: filesystem verification is independently testable without USB har
 
 ### 3.1 Application service contract
 
-- [ ] Add a UI-facing Go service that returns device cards without exposing mutable internals.
-- [ ] Include raw-test safety state and reasons in each device view model.
-- [ ] Add stable formatting helpers/fields needed by the frontend.
-- [ ] Unit-test mapping, ordering and safety propagation.
+- [x] Add a UI-facing Go service that returns device cards without exposing mutable internals.
+- [x] Include raw-test safety state and reasons in each device view model.
+- [x] Add stable formatting helpers/fields needed by the frontend.
+- [x] Unit-test mapping, ordering and safety propagation.
 
 ### 3.2 Wails shell
 
@@ -68,22 +68,22 @@ Exit criteria: filesystem verification is independently testable without USB har
 - [ ] Build device selection screen with model/vendor, capacity, transport, mounts and safety state.
 - [ ] Add empty, loading and backend-error states.
 - [ ] Add responsive desktop layout and accessible keyboard/focus behavior.
-- [ ] Keep destructive controls absent/disabled until Phase 4.
+- [x] Keep destructive controls absent/disabled until Phase 4.
 
 ### 3.4 Live verification UI
 
-- [ ] Define frontend region states: `pending`, `writing`, `valid`, `corrupt`, `read-error`, `write-error`.
+- [x] Define frontend region states: `pending`, `writing`, `valid`, `corrupt`, `read-error`, `write-error`.
 - [ ] Render a scalable region grid inspired by ValiDrive without copying its branding/assets.
 - [ ] Display bytes processed, phase, elapsed time and overall progress.
 - [ ] Wire cancellation from UI to Go context cancellation.
-- [ ] Run the existing filesystem verifier only on an explicitly selected mounted filesystem.
+- [x] Run the existing filesystem verifier only on an explicitly selected mounted filesystem, after refreshing device identity and mount ownership.
 
 ### 3.5 Phase 3 tests and CI
 
-- [ ] Go unit tests for the application service.
-- [ ] Frontend unit tests for formatting, device-state mapping and region-state reducer.
+- [x] Go unit tests for the application service.
+- [x] Frontend unit tests for formatting, device-state mapping and region-state reducer.
 - [ ] Frontend production build in CI.
-- [ ] `go test -race ./...`, `go vet ./...` and `gofmt` clean.
+- [x] `go test -race ./...`, `go vet ./...` and `gofmt` clean.
 - [ ] Wails build smoke test on Linux CI once system dependencies are installed.
 
 Exit criteria: the desktop app lists real devices, explains safety state, can run/cancel the non-destructive filesystem verifier, and visualizes progress without any raw-device write capability.
