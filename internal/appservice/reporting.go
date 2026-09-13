@@ -169,17 +169,17 @@ func (d *Desktop) recordFilesystemReport(card DeviceCard, req VerificationReques
 		tested = uint64(result.BytesVerified)
 	}
 	doc := report.Document{
-		SchemaVersion: report.SchemaVersion,
-		App: appReportInfo(),
-		Operation: report.OperationFilesystem,
-		Status: status,
-		StartedAt: report.Timestamp(started),
-		CompletedAt: report.Timestamp(completed),
-		DurationMilliseconds: report.DurationMilliseconds(started, completed),
-		Device: reportDevice(card),
+		SchemaVersion:            report.SchemaVersion,
+		App:                      appReportInfo(),
+		Operation:                report.OperationFilesystem,
+		Status:                   status,
+		StartedAt:                report.Timestamp(started),
+		CompletedAt:              report.Timestamp(completed),
+		DurationMilliseconds:     report.DurationMilliseconds(started, completed),
+		Device:                   reportDevice(card),
 		AdvertisedCapacityBytes: card.CapacityBytes,
-		TestedCapacityBytes: tested,
-		Errors: errorsList,
+		TestedCapacityBytes:      tested,
+		Errors:                   errorsList,
 		Filesystem: &report.FilesystemResult{
 			MountPoint: req.MountPoint, RequestedBytes: req.TotalBytes, BytesWritten: result.BytesWritten,
 			BytesVerified: result.BytesVerified, Regions: result.Regions,
@@ -188,14 +188,14 @@ func (d *Desktop) recordFilesystemReport(card DeviceCard, req VerificationReques
 	d.reports.Set(doc)
 }
 
-func (d *Desktop) recordRawReport(card DeviceCard, result rawprobe.Report, runErr error, started, completed time.Time) {
+func (d *Desktop) recordRawReport(card DeviceCard, req RawProbeRequest, result rawprobe.Report, runErr error, started, completed time.Time) {
 	if d == nil || d.reports == nil {
 		return
 	}
 	status := report.StatusPassed
 	if errors.Is(runErr, context.Canceled) {
 		status = report.StatusCancelled
-	} else if runErr != nil || result.RestoreErrors > 0 || !result.Restored {
+	} else if runErr != nil || result.RestoreErrors > 0 || (result.Samples > 0 && !result.Restored) {
 		status = report.StatusFailed
 	} else if result.SuspectFakeCapacity {
 		status = report.StatusSuspicious
@@ -219,21 +219,32 @@ func (d *Desktop) recordRawReport(card DeviceCard, result rawprobe.Report, runEr
 	if runErr != nil {
 		errorsList = append(errorsList, report.ErrorEntry{Code: "operation-error", Message: runErr.Error()})
 	}
-	tested := uint64(result.Samples) * result.BlockBytes
+	advertised := result.AdvertisedBytes
+	if advertised == 0 {
+		advertised = card.CapacityBytes
+	}
+	blockBytes := result.BlockBytes
+	if blockBytes == 0 {
+		blockBytes = req.BlockBytes
+		if blockBytes == 0 {
+			blockBytes = rawprobe.DefaultBlockBytes
+		}
+	}
+	tested := uint64(result.Samples) * blockBytes
 	doc := report.Document{
-		SchemaVersion: report.SchemaVersion,
-		App: appReportInfo(),
-		Operation: report.OperationRaw,
-		Status: status,
-		StartedAt: report.Timestamp(started),
-		CompletedAt: report.Timestamp(completed),
-		DurationMilliseconds: report.DurationMilliseconds(started, completed),
-		Device: reportDevice(card),
+		SchemaVersion:            report.SchemaVersion,
+		App:                      appReportInfo(),
+		Operation:                report.OperationRaw,
+		Status:                   status,
+		StartedAt:                report.Timestamp(started),
+		CompletedAt:              report.Timestamp(completed),
+		DurationMilliseconds:     report.DurationMilliseconds(started, completed),
+		Device:                   reportDevice(card),
 		AdvertisedCapacityBytes: card.CapacityBytes,
-		TestedCapacityBytes: tested,
-		Errors: errorsList,
+		TestedCapacityBytes:      tested,
+		Errors:                   errorsList,
 		Raw: &report.RawResult{
-			AdvertisedBytes: result.AdvertisedBytes, BlockBytes: result.BlockBytes, Samples: result.Samples,
+			AdvertisedBytes: advertised, BlockBytes: blockBytes, Samples: result.Samples,
 			ValidSamples: result.ValidSamples, CorruptSamples: result.CorruptSamples, ReadErrors: result.ReadErrors,
 			WriteErrors: result.WriteErrors, RestoreErrors: result.RestoreErrors, ValidatedThroughBytes: result.ValidatedThroughBytes,
 			SuspectFakeCapacity: result.SuspectFakeCapacity, Restored: result.Restored, Results: samples,
