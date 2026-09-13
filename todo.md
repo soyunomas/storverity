@@ -8,7 +8,7 @@ This file is the execution checklist for the project. A phase is only marked com
 - Treat device discovery as read-only.
 - Deny destructive access by default; never trust a free-form `/dev/...` path from the UI.
 - Re-evaluate device identity and safety immediately before destructive I/O.
-- No raw destructive operation is enabled until Phase 4.
+- Raw destructive operations must always pass the Phase 4 safety/identity gate; no direct bypass path is permitted.
 - Every storage-writing code path must support cancellation and deterministic cleanup where possible.
 - Add tests before publishing a phase. Prefer fault injection and temporary directories over real hardware in CI.
 - Keep commits phase-oriented and small enough to review.
@@ -96,41 +96,49 @@ Exit criteria: filesystem verification is independently testable without USB har
 
 Exit criteria: the desktop app lists real devices, explains safety state, can run/cancel the non-destructive filesystem verifier, visualizes success/failure per region, builds reproducibly from committed dependency lock data, and exposes no raw-device write capability.
 
-## Phase 4 — Raw destructive capacity probe — PLANNED
+## Phase 4 — Raw destructive capacity probe — COMPLETE
 
 ### 4.1 Probe design
 
-- [ ] Define the threat model: fake capacity, alias/wraparound, unreadable regions and inconsistent writes.
-- [ ] Define sample layout across the advertised address space.
-- [ ] Decide and document reversible sampling vs explicitly destructive modes.
-- [ ] Use direct block-device I/O in an isolated package.
+- [x] Define the threat model: fake capacity, alias/wraparound, unreadable regions and inconsistent writes.
+- [x] Define an aligned sample layout across the advertised address space, with edge guards where capacity permits.
+- [x] Document sampled raw writes with best-effort restoration and their remaining destructive risk.
+- [x] Use direct block-device I/O in an isolated `internal/rawprobe` package.
+- [x] Enforce a minimum desktop profile of 512 × 4 KiB samples while bounding sample/block geometry defensively.
 
 ### 4.2 Safety gate
 
-- [ ] Refresh discovery immediately before opening the device.
-- [ ] Match device identity using path plus stable metadata where available.
-- [ ] Reject mounted, system, swap, read-only, non-whole-disk and non-external devices.
-- [ ] Require an explicit UI confirmation describing data-loss risk.
-- [ ] Prevent stale UI selections from authorizing a changed/reinserted device.
+- [x] Refresh discovery immediately before opening the device.
+- [x] Match device identity using stable selection metadata plus Linux `major:minor`.
+- [x] Reject mounted, system, swap, read-only, non-whole-disk and non-external devices.
+- [x] Require an explicit short-lived, one-use UI confirmation describing data-loss risk.
+- [x] Prevent stale UI selections from authorizing a changed/reinserted device.
+- [x] Open Linux block devices synchronously/exclusively and validate the opened descriptor's `major:minor` identity.
+- [x] Refresh discovery and safety a second time after open and before the first raw write to close the discovery/open TOCTOU window.
+- [x] Prevent the non-destructive verifier and raw probe from running concurrently inside the desktop application.
 
 ### 4.3 Probe engine
 
-- [ ] Read/save original sampled bytes where restoration is supported.
-- [ ] Write unique patterns per sampled region.
-- [ ] Flush device buffers where supported.
-- [ ] Re-read in an order capable of detecting alias/wraparound.
-- [ ] Classify every sample with structured result codes.
-- [ ] Attempt restoration where promised and report restoration failures separately.
-- [ ] Support cancellation without falsely reporting a clean/restored state.
+- [x] Read/save original sampled bytes before writing.
+- [x] Write unique deterministic patterns per sampled region.
+- [x] Flush device buffers before read-back verification.
+- [x] Re-read in reverse write order to expose alias/wraparound behavior.
+- [x] Classify every sample with structured snapshot/write/valid/corrupt/read/write/restore outcomes.
+- [x] Attempt restoration for every touched sample and report restoration failures separately.
+- [x] Support cancellation without falsely reporting a clean/restored state; touched samples are still restored best-effort after cancellation.
+- [x] Stream raw-probe progress into the Wails/Svelte region map and preserve Stop/restore controls while a run is active.
 
 ### 4.4 Validation
 
-- [ ] Unit-test address/sample planning without real devices.
-- [ ] Add file-backed fake-block-device tests for aliasing and short-device behavior.
-- [ ] Document hardware-in-the-loop test procedure using sacrificial USB media.
-- [ ] Never run destructive hardware tests in ordinary CI.
+- [x] Unit-test address/sample planning and unsafe geometry without real devices.
+- [x] Add in-memory aliasing, short-device, cancellation and restoration tests.
+- [x] Add file-backed fake-block-device tests for aliasing and short-device behavior.
+- [x] Add appservice tests for one-use confirmation, stale identity, post-open identity/mount changes, session exclusivity and cancellation.
+- [x] Add frontend tests for raw outcome-to-region mapping and restoration errors.
+- [x] Document hardware-in-the-loop test procedure using sacrificial USB media.
+- [x] Keep destructive hardware tests out of ordinary CI and provide `make test-rawprobe` for safe focused validation.
 
-Exit criteria: raw probing cannot be started against a currently unsafe device and fake-capacity behavior is detected reproducibly.
+Exit criteria: raw probing cannot be started against a currently unsafe/stale device, the opened target is held exclusively and revalidated before writing, fake-capacity alias/wraparound behavior is detected reproducibly in automated fakes, cancellation/restoration semantics are explicit, and real hardware testing is isolated to a sacrificial-media procedure.
 
 ## Phase 5 — Reports, packaging and release — PLANNED
 
