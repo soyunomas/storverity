@@ -8,6 +8,8 @@ import (
 
 const (
 	DefaultBlockBytes = 4096
+	MinBlockBytes     = 512
+	MaxBlockBytes     = 1024 * 1024
 	DefaultSamples    = 64
 	DefaultGuardBytes = 4 * 1024 * 1024
 	MaxSamples        = 4096
@@ -23,8 +25,8 @@ type Sample struct {
 // likely to damage partition metadata. This is risk reduction, not a safety
 // guarantee: raw probing still writes directly to the block device.
 func Plan(capacity uint64, samples int, blockBytes uint64, guardBytes uint64) ([]Sample, error) {
-	if blockBytes == 0 {
-		return nil, errors.New("block size must be greater than zero")
+	if blockBytes < MinBlockBytes || blockBytes > MaxBlockBytes || blockBytes&(blockBytes-1) != 0 {
+		return nil, fmt.Errorf("block size must be a power of two between %d and %d bytes", MinBlockBytes, MaxBlockBytes)
 	}
 	if samples < 2 || samples > MaxSamples {
 		return nil, fmt.Errorf("sample count must be between 2 and %d", MaxSamples)
