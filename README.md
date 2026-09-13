@@ -2,24 +2,28 @@
 
 StorVerity is a Linux-first storage verification tool for detecting fake-capacity, corrupted, or unreliable USB drives, SD cards, and other removable media.
 
-> **Status:** early development. Raw block-device writes remain disabled. The desktop application currently exposes only the guarded non-destructive filesystem verifier.
+> **Status:** early development. The desktop application includes both the guarded non-destructive filesystem verifier and a guarded destructive raw capacity probe. Raw probing can cause data loss and should only be used on expendable media.
 
 ## Current capabilities
 
 - Discover whole-disk block devices on Linux through structured `lsblk` JSON.
 - Aggregate mount points and filesystems from nested partitions, dm-crypt/LVM stacks, and other descendants.
 - Identify disks that contain critical system mount points and swap.
-- Evaluate future raw-test eligibility with explicit machine-readable deny/warning reasons.
+- Evaluate raw-test eligibility with explicit machine-readable deny/warning reasons.
 - Non-destructive filesystem verification with deterministic region data, `fsync`, read-back verification, cancellation, progress events, cleanup, and typed per-region corruption/read/write failures.
-- Wails v2 + Svelte/TypeScript desktop UI with device selection, safety state, mount/test-size controls, live region grid, progress and Stop support.
+- Sampled destructive raw capacity probing with unique patterns across the advertised address space, reverse-order verification for alias/wraparound detection, structured per-sample outcomes, cancellation, and best-effort restoration of touched blocks.
+- A short-lived one-time destructive confirmation challenge tied to refreshed device identity, plus pre-open and post-open safety revalidation.
+- Linux raw targets opened synchronously and exclusively, with descriptor `major:minor` verification before the first write.
+- Wails v2 + Svelte/TypeScript desktop UI with device selection, safety state, live region maps, progress, Stop/restore support, and explicit destructive-risk messaging.
 - Reproducible Go/npm dependency metadata with committed `go.sum` and `package-lock.json`; frontend and Wails builds install with `npm ci`.
-- CI coverage for the Go core, dependency consistency, frontend tests/type checking/security audit/production build, and a native Wails build on Ubuntu 24.04 with WebKitGTK 4.1.
+- CI coverage for the Go core, raw-probe fakes, dependency consistency, frontend tests/type checking/security audit/production build, and a native Wails build on Ubuntu 24.04 with WebKitGTK 4.1.
 
 ## Requirements
 
 - Go 1.25 or newer (required by Wails v2.15).
 - Node.js 22 for frontend development.
 - Linux desktop development packages required by Wails/WebKitGTK.
+- Operating-system permission to open a selected raw block device read/write when using the destructive raw probe.
 
 ## Development
 
@@ -43,6 +47,7 @@ Useful development targets include:
 
 ```bash
 make list            # diagnostic JSON device discovery
+make test-rawprobe   # raw engine/safety tests; never touches real block devices
 make dev             # Wails desktop development mode
 make build           # clean production desktop build
 make frontend-dev    # standalone Vite dev server
@@ -68,16 +73,22 @@ The desktop application uses **Go 1.25 + Wails v2.15 + Svelte 5/TypeScript**. St
 | 1 | Linux device discovery and safety policy | Complete |
 | 2 | Non-destructive filesystem verification engine | Complete |
 | 3 | Wails/Svelte desktop UI and live progress map | Complete |
-| 4 | Raw destructive capacity probe | Planned |
+| 4 | Raw destructive capacity probe | Complete |
 | 5 | Reports, packaging, releases | Planned |
 
-See [`todo.md`](todo.md) for the live implementation checklist and [`docs/roadmap.md`](docs/roadmap.md) for phase acceptance criteria.
+See [`todo.md`](todo.md) for the live implementation checklist, [`docs/roadmap.md`](docs/roadmap.md) for phase acceptance criteria, and [`docs/raw-probe.md`](docs/raw-probe.md) for the raw-probe threat model and safety design.
 
 ## Safety model
 
-StorVerity is intended to perform destructive tests eventually. Raw testing will be blocked when a device is mounted, read-only, identified as a system disk, contains swap, has an invalid device path, or fails other safety checks. The UI never treats a manually typed `/dev/...` path as sufficient authorization for destructive I/O.
+The raw capacity probe is **destructive even though StorVerity attempts to restore every sampled block**. Power loss, disconnects, fraudulent firmware, write failures, or restoration failures can leave data damaged. Use expendable media and keep backups of anything important.
 
-The current desktop verifier operates only inside a selected mounted filesystem. Immediately before starting, StorVerity refreshes device discovery and verifies that the selected mount still belongs to the selected external device.
+Raw probing is blocked when a device is mounted, read-only, identified as a system disk, contains swap, is not a whole external/removable disk, has an invalid device path, or fails other safety checks. The UI never treats a manually typed `/dev/...` path as authorization.
+
+Preparing a raw probe creates a short-lived one-use challenge tied to the selected device identity. Starting it refreshes discovery and safety before opening the target. Linux opens the block device with synchronous exclusive access and verifies the opened descriptor's `major:minor`; discovery and safety are then refreshed a second time before the first raw write. A stale/reinserted target or a filesystem mounted during that window aborts the run.
+
+The default raw profile samples 512 locations with 4 KiB unique patterns (about 2 MiB total pattern data), verifies them in reverse write order to expose alias/wraparound behavior, and restores all touched blocks best-effort. A clean sampled result is not an exhaustive proof that every byte of the medium is healthy.
+
+Ordinary CI never performs raw writes against `/dev/*`. See [`docs/raw-probe-hardware-test.md`](docs/raw-probe-hardware-test.md) for the sacrificial-media hardware test procedure.
 
 ## License
 
