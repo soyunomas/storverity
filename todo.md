@@ -140,20 +140,40 @@ Exit criteria: the desktop app lists real devices, explains safety state, can ru
 
 Exit criteria: raw probing cannot be started against a currently unsafe/stale device, the opened target is held exclusively and revalidated before writing, fake-capacity alias/wraparound behavior is detected reproducibly in automated fakes, cancellation/restoration semantics are explicit, and real hardware testing is isolated to a sacrificial-media procedure.
 
-## Phase 5 — Reports, packaging and release — PLANNED
+## Phase 5 — Reports, packaging and release — COMPLETE
 
-- [ ] Generate human-readable verification report.
-- [ ] Generate stable machine-readable JSON report schema.
-- [ ] Include device identity, advertised capacity, tested capacity, errors, timestamps and app version.
-- [ ] Add AppImage packaging.
-- [ ] Evaluate `.deb`, `.rpm` and Flatpak packaging.
-- [ ] Add application icon and original visual identity.
-- [ ] Add release workflow with tagged builds and checksums.
-- [ ] Add changelog and semantic versioning policy.
-- [ ] Choose and add an open-source license before the first public release.
-- [ ] Perform accessibility review and destructive-operation UX review.
+### 5.1 Reports
 
-Exit criteria: reproducible release artifacts, understandable reports and documented installation paths.
+- [x] Generate a human-readable text report for filesystem and raw operations.
+- [x] Generate a stable machine-readable `storverity.report.v1` JSON report plus committed JSON Schema.
+- [x] Include application version/build metadata, device identity, advertised/tested capacity, timestamps, duration, structured errors and operation-specific results.
+- [x] Record passed, suspicious, failed and cancelled operations and make the latest report exportable from the desktop UI.
+- [x] Add unit/schema tests for report generation and application-service report recording/export.
+
+### 5.2 Packaging
+
+- [x] Add x86_64 AppImage packaging with pinned/verified upstream AppImage tooling.
+- [x] Add a deterministic Linux x86_64 tarball and SHA-256 manifest.
+- [x] Add desktop entry and AppStream metadata.
+- [x] Evaluate `.deb`, `.rpm` and Flatpak packaging and document why native distro packages/Flatpak are deferred pending a support matrix or privileged-helper design.
+- [x] Add an original StorVerity SVG application mark and package it with release artifacts.
+- [x] Exercise Wails build, AppImage, tarball and checksum verification in ordinary CI without accessing real removable media.
+
+### 5.3 Release engineering
+
+- [x] Embed version, source commit and deterministic build date into release binaries/reports via linker metadata.
+- [x] Add a tag-driven GitHub release workflow that validates SemVer/changelog state, builds Linux artifacts and publishes checksums.
+- [x] Add `CHANGELOG.md` and document semantic-versioning/release policy.
+- [x] Add the MIT open-source license.
+
+### 5.4 Accessibility and destructive-operation UX
+
+- [x] Add visible keyboard focus treatment and reduced-motion support.
+- [x] Add accessible live/status/error semantics and labels to report/progress controls and region maps.
+- [x] Keep destructive risk text persistent and separate preparation from exact-phrase confirmation and execution.
+- [x] Document the accessibility/destructive-operation review and remaining items that require future manual assistive-technology testing.
+
+Exit criteria: reports have a versioned stable schema, Linux release artifacts are reproducible/checksummed and CI-smoke-tested, tagged releases have an automated publication path, licensing/versioning are explicit, and the desktop UI exposes report export plus reviewed keyboard/status/destructive-operation semantics.
 
 ## Backlog after first release
 
@@ -163,3 +183,5 @@ Exit criteria: reproducible release artifacts, understandable reports and docume
 - [ ] Historical reports without storing sensitive device data by default.
 - [ ] Localization framework.
 - [ ] Automatic update strategy only after signing/release infrastructure is mature.
+- [ ] Privileged raw-I/O helper with polkit/DBus so the full GUI never needs elevated execution.
+- [ ] Manual screen-reader/keyboard/high-contrast validation on the supported Linux desktop matrix.
