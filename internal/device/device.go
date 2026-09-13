@@ -6,6 +6,7 @@ type Device struct {
 	Name           string   `json:"name"`
 	KernelName     string   `json:"kernelName"`
 	Path           string   `json:"path"`
+	MajorMinor     string   `json:"majorMinor,omitempty"`
 	Type           string   `json:"type"`
 	Transport      string   `json:"transport,omitempty"`
 	Removable      bool     `json:"removable"`

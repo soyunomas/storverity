@@ -27,7 +27,7 @@ func NewScanner() *Scanner {
 func (s *Scanner) List(ctx context.Context) ([]Device, error) {
 	args := []string{
 		"--json", "--bytes", "--paths",
-		"--output", "NAME,KNAME,PATH,TYPE,TRAN,RM,RO,SIZE,MODEL,VENDOR,SERIAL,MOUNTPOINTS,FSTYPE",
+		"--output", "NAME,KNAME,PATH,MAJ:MIN,TYPE,TRAN,RM,RO,SIZE,MODEL,VENDOR,SERIAL,MOUNTPOINTS,FSTYPE",
 	}
 
 	out, err := exec.CommandContext(ctx, s.lsblkPath, args...).Output()
@@ -49,6 +49,7 @@ type lsblkDevice struct {
 	Name        string        `json:"name"`
 	KernelName  string        `json:"kname"`
 	Path        string        `json:"path"`
+	MajorMinor  string        `json:"maj:min"`
 	Type        string        `json:"type"`
 	Transport   string        `json:"tran"`
 	Removable   boolish       `json:"rm"`
@@ -119,6 +120,7 @@ func parseLSBLK(data []byte) ([]Device, error) {
 			Name:           strings.TrimSpace(d.Name),
 			KernelName:     strings.TrimSpace(d.KernelName),
 			Path:           strings.TrimSpace(d.Path),
+			MajorMinor:     strings.TrimSpace(d.MajorMinor),
 			Type:           strings.TrimSpace(d.Type),
 			Transport:      transport,
 			Removable:      bool(d.Removable),

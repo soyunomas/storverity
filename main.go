@@ -20,7 +20,7 @@ func main() {
 	var runtimeMu sync.RWMutex
 	var runtimeCtx context.Context
 
-	emitProgress := func(progress appservice.VerificationProgress) {
+	emitVerification := func(progress appservice.VerificationProgress) {
 		runtimeMu.RLock()
 		ctx := runtimeCtx
 		runtimeMu.RUnlock()
@@ -28,8 +28,16 @@ func main() {
 			runtime.EventsEmit(ctx, "verification:progress", progress)
 		}
 	}
+	emitRawProbe := func(progress appservice.RawProbeProgress) {
+		runtimeMu.RLock()
+		ctx := runtimeCtx
+		runtimeMu.RUnlock()
+		if ctx != nil {
+			runtime.EventsEmit(ctx, "rawprobe:progress", progress)
+		}
+	}
 
-	app := appservice.NewLinuxDesktop(emitProgress)
+	app := appservice.NewLinuxDesktop(emitVerification, emitRawProbe)
 
 	err := wails.Run(&options.App{
 		Title:            "StorVerity",
@@ -48,6 +56,7 @@ func main() {
 		},
 		OnShutdown: func(context.Context) {
 			app.CancelVerification()
+			app.CancelRawProbe()
 			runtimeMu.Lock()
 			runtimeCtx = nil
 			runtimeMu.Unlock()
