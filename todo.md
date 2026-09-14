@@ -175,6 +175,41 @@ Exit criteria: raw probing cannot be started against a currently unsafe/stale de
 
 Exit criteria: reports have a versioned stable schema, Linux release artifacts are reproducible/checksummed and CI-smoke-tested, tagged releases have an automated publication path, licensing/versioning are explicit, and the desktop UI exposes report export plus reviewed keyboard/status/destructive-operation semantics.
 
+## Phase 6 — Privilege-separated raw I/O — COMPLETE
+
+### 6.1 Privileged boundary
+
+- [x] Add a minimal root `storverity-helper` service activated on the system D-Bus.
+- [x] Keep the Wails/WebKit desktop process unprivileged for destructive raw probing.
+- [x] Expose a high-level raw-probe operation rather than generic privileged block-device read/write methods.
+- [x] Use shared stable device IDs and fingerprints across the desktop/helper boundary.
+
+### 6.2 Authorization and safety
+
+- [x] Require per-operation polkit authorization for the raw capacity probe.
+- [x] Rediscover the selected device inside the root helper instead of accepting a trusted raw path from the UI.
+- [x] Re-run raw-test safety and fingerprint validation before opening the target.
+- [x] Open only the rediscovered target exclusively and validate the opened descriptor's Linux `major:minor`.
+- [x] Rediscover and re-run safety/fingerprint/path/`major:minor` checks after open and before the first raw write.
+- [x] Reject invalid probe geometry before authorization or device access.
+
+### 6.3 Sessions, cancellation and packaging
+
+- [x] Scope cancellation to the D-Bus caller and cryptographically random session ID.
+- [x] Cancel an active privileged probe when its D-Bus caller disconnects so restoration can proceed best-effort.
+- [x] Add polkit, D-Bus and hardened systemd integration files.
+- [x] Package the helper and root installer in the deterministic tarball while keeping the AppImage itself unprivileged.
+- [x] Add `make helper-build` and `make helper-install` development targets.
+
+### 6.4 Validation and documentation
+
+- [x] Add helper tests for authorization denial, stale identity, post-open mount changes, cancellation ownership and invalid geometry without real devices.
+- [x] Add application-service tests for the privileged adapter and cancellation propagation.
+- [x] Compile the real D-Bus/polkit transport in ordinary Go/desktop CI and smoke-package the helper without privileged installation.
+- [x] Document privilege separation, installation, systemd hardening and manual polkit/sacrificial-media integration checks.
+
+Exit criteria: the Wails desktop never needs root raw-device access; the privileged helper independently enforces the destructive safety/identity gate on every authorized run, exposes no generic block-device API, cancels orphaned sessions, and ships with reviewable polkit/D-Bus/systemd integration.
+
 ## Backlog after first release
 
 - [ ] Windows device-discovery backend and safety policy.
@@ -183,5 +218,4 @@ Exit criteria: reports have a versioned stable schema, Linux release artifacts a
 - [ ] Historical reports without storing sensitive device data by default.
 - [ ] Localization framework.
 - [ ] Automatic update strategy only after signing/release infrastructure is mature.
-- [ ] Privileged raw-I/O helper with polkit/DBus so the full GUI never needs elevated execution.
 - [ ] Manual screen-reader/keyboard/high-contrast validation on the supported Linux desktop matrix.
