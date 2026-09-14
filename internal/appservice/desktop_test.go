@@ -75,7 +75,7 @@ func TestDesktopVerificationDelegatesProgressAndCancellation(t *testing.T) {
 func TestDesktopEmitsProgress(t *testing.T) {
 	source := contextSource{devices: []device.Device{{
 		Path: "/dev/sdb", KernelName: "sdb", Type: "disk", SizeBytes: 1,
-		LikelyExternal: true, MountPoints: []string{"/media/USB"},
+		LikelyExternal: true, MountPoints: []string{"/media/USB"}, WritableMountPoints: []string{"/media/USB"},
 	}}}
 	engine := &fakeVerifier{
 		report:   verifyfs.Report{Regions: 1, BytesWritten: 1, BytesVerified: 1},
