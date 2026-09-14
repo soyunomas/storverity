@@ -41,7 +41,7 @@ func configuredPrivilegedController(source DeviceSource, client PrivilegedRawPro
 func TestPrivilegedControllerPassesConfirmedIdentityToHelper(t *testing.T) {
 	dev := eligibleRawDevice()
 	client := &fakePrivilegedClient{
-		report: rawprobe.Report{Samples: rawprobe.DefaultSamples, Restored: true},
+		report:   rawprobe.Report{Samples: rawprobe.DefaultSamples, Restored: true},
 		progress: []rawprobe.Progress{{Phase: rawprobe.PhaseWrite, Sample: 1, SamplesTotal: rawprobe.DefaultSamples, Outcome: rawprobe.OutcomeWritten}},
 	}
 	controller := configuredPrivilegedController(fakeSource{devices: []device.Device{dev}}, client)
