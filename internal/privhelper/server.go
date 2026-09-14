@@ -83,6 +83,10 @@ func (s *Server) RunRawProbe(ctx context.Context, caller string, req RunRequest,
 	if s == nil || s.devices == nil || s.engine == nil || s.opener == nil || s.authorizer == nil || s.seed == nil {
 		return responseError(ErrorInternal, errors.New("privileged helper is not configured"))
 	}
+	samples, blockBytes, err := normalizedGeometry(req)
+	if err != nil {
+		return responseError(ErrorInvalid, err)
+	}
 	if s.isBusy() {
 		return responseError(ErrorBusy, ErrBusy)
 	}
@@ -128,17 +132,6 @@ func (s *Server) RunRawProbe(ctx context.Context, caller string, req RunRequest,
 	seed, err := s.seed()
 	if err != nil {
 		return responseError(ErrorInternal, fmt.Errorf("create raw probe seed: %w", err))
-	}
-	samples := req.Samples
-	if samples < rawprobe.DefaultSamples {
-		samples = rawprobe.DefaultSamples
-	}
-	blockBytes := req.BlockBytes
-	if blockBytes == 0 {
-		blockBytes = rawprobe.DefaultBlockBytes
-	}
-	if samples > rawprobe.MaxSamples || blockBytes < rawprobe.MinBlockBytes || blockBytes > rawprobe.MaxBlockBytes || blockBytes&(blockBytes-1) != 0 {
-		return responseError(ErrorInvalid, ErrInvalid)
 	}
 
 	report, runErr := s.engine.Run(runCtx, media, rawprobe.Config{
@@ -192,6 +185,21 @@ func (s *Server) validateRequest(req RunRequest) error {
 		return ErrInvalid
 	}
 	return nil
+}
+
+func normalizedGeometry(req RunRequest) (int, uint64, error) {
+	samples := req.Samples
+	if samples < rawprobe.DefaultSamples {
+		samples = rawprobe.DefaultSamples
+	}
+	blockBytes := req.BlockBytes
+	if blockBytes == 0 {
+		blockBytes = rawprobe.DefaultBlockBytes
+	}
+	if samples > rawprobe.MaxSamples || blockBytes < rawprobe.MinBlockBytes || blockBytes > rawprobe.MaxBlockBytes || blockBytes&(blockBytes-1) != 0 {
+		return 0, 0, ErrInvalid
+	}
+	return samples, blockBytes, nil
 }
 
 func validToken(value string) bool {
