@@ -20,13 +20,17 @@ type ProgressSink func(VerificationProgress)
 
 type RawProgressSink func(RawProbeProgress)
 
+type RawProbePreparer interface {
+	Prepare(context.Context, string) (RawProbeChallenge, error)
+}
+
 // Desktop is the UI-facing application service bound by Wails. It intentionally
 // exposes application operations only; low-level device, safety, and verifier
 // packages are never bound directly to JavaScript.
 type Desktop struct {
 	devices      *Service
 	verification *VerificationManager
-	rawControl   *RawProbeController
+	rawControl   RawProbePreparer
 	rawProbe     *RawProbeManager
 	reports      *ReportManager
 	emitProgress ProgressSink
@@ -55,7 +59,7 @@ func NewLinuxDesktop(emit ProgressSink, emitRaw RawProgressSink) *Desktop {
 func NewLinuxDesktopWithReportSaver(emit ProgressSink, emitRaw RawProgressSink, saver ReportSaver) *Desktop {
 	source := device.NewScanner()
 	desktop := NewDesktop(source, verifyfs.New(), emit)
-	rawControl := NewRawProbeController(source, rawprobe.New(), RawMediaOpenFunc(rawprobe.OpenLinuxBlockDevice))
+	rawControl := NewLinuxPrivilegedRawProbeController(source)
 	desktop.rawControl = rawControl
 	desktop.rawProbe = NewRawProbeManager(rawControl)
 	desktop.reports = NewReportManager(saver)
@@ -117,8 +121,10 @@ func (d *Desktop) PrepareRawProbe(deviceID string) (RawProbeChallenge, error) {
 	return d.rawControl.Prepare(ctx, deviceID)
 }
 
-// StartRawProbe runs the destructive sampled probe and records the restoration
-// and fake-capacity result even when the operation returns an error.
+// StartRawProbe runs the destructive sampled probe through the privileged
+// system helper and records the restoration/fake-capacity result even when the
+// operation returns an error. The Wails process itself never opens /dev for
+// write access.
 func (d *Desktop) StartRawProbe(req RawProbeRequest) (rawprobe.Report, error) {
 	if d == nil || d.rawProbe == nil {
 		return rawprobe.Report{}, errors.New("raw probe service is not configured")
