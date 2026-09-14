@@ -17,20 +17,21 @@ type DeviceSource interface {
 }
 
 type DeviceCard struct {
-	ID             string          `json:"id"`
-	Path           string          `json:"path"`
-	DisplayName    string          `json:"displayName"`
-	Vendor         string          `json:"vendor,omitempty"`
-	Model          string          `json:"model,omitempty"`
-	Serial         string          `json:"serial,omitempty"`
-	Transport      string          `json:"transport,omitempty"`
-	CapacityBytes  uint64          `json:"capacityBytes"`
-	MountPoints    []string        `json:"mountPoints"`
-	FileSystems    []string        `json:"fileSystems"`
-	ReadOnly       bool            `json:"readOnly"`
-	SystemDisk     bool            `json:"systemDisk"`
-	LikelyExternal bool            `json:"likelyExternal"`
-	RawTest        safety.Decision `json:"rawTest"`
+	ID                  string          `json:"id"`
+	Path                string          `json:"path"`
+	DisplayName         string          `json:"displayName"`
+	Vendor              string          `json:"vendor,omitempty"`
+	Model               string          `json:"model,omitempty"`
+	Serial              string          `json:"serial,omitempty"`
+	Transport           string          `json:"transport,omitempty"`
+	CapacityBytes       uint64          `json:"capacityBytes"`
+	MountPoints         []string        `json:"mountPoints"`
+	WritableMountPoints []string        `json:"writableMountPoints"`
+	FileSystems         []string        `json:"fileSystems"`
+	ReadOnly            bool            `json:"readOnly"`
+	SystemDisk          bool            `json:"systemDisk"`
+	LikelyExternal      bool            `json:"likelyExternal"`
+	RawTest             safety.Decision `json:"rawTest"`
 }
 
 type Service struct{ devices DeviceSource }
@@ -61,16 +62,20 @@ func (s *Service) ListDevices(ctx context.Context) ([]DeviceCard, error) {
 
 func mapDevice(d device.Device) DeviceCard {
 	mounts := append([]string(nil), d.MountPoints...)
+	writableMounts := append([]string(nil), d.WritableMountPoints...)
 	filesystems := append([]string(nil), d.FileSystems...)
 	if mounts == nil {
 		mounts = []string{}
+	}
+	if writableMounts == nil {
+		writableMounts = []string{}
 	}
 	if filesystems == nil {
 		filesystems = []string{}
 	}
 	return DeviceCard{
 		ID: device.ID(d), Path: d.Path, DisplayName: displayName(d), Vendor: d.Vendor, Model: d.Model, Serial: d.Serial,
-		Transport: d.Transport, CapacityBytes: d.SizeBytes, MountPoints: mounts, FileSystems: filesystems,
+		Transport: d.Transport, CapacityBytes: d.SizeBytes, MountPoints: mounts, WritableMountPoints: writableMounts, FileSystems: filesystems,
 		ReadOnly: d.ReadOnly, SystemDisk: d.SystemDisk, LikelyExternal: d.LikelyExternal, RawTest: safety.EvaluateRawTest(d),
 	}
 }
