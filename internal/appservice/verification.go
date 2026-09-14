@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	ErrDeviceNotFound  = errors.New("selected device is no longer present")
-	ErrMountNotFound   = errors.New("selected mount point no longer belongs to the device")
-	ErrTargetProtected = errors.New("selected device is not eligible for filesystem verification")
+	ErrDeviceNotFound   = errors.New("selected device is no longer present")
+	ErrMountNotFound    = errors.New("selected mount point no longer belongs to the device")
+	ErrMountNotWritable = errors.New("selected mount point is not writable")
+	ErrTargetProtected  = errors.New("selected device is not eligible for filesystem verification")
 )
 
 type FilesystemVerifier interface {
@@ -77,6 +78,9 @@ func (c *VerificationController) Run(ctx context.Context, req VerificationReques
 	}
 	if selected.SystemDisk || selected.ReadOnly || !selected.LikelyExternal {
 		return verifyfs.Report{}, ErrTargetProtected
+	}
+	if !slices.Contains(selected.WritableMountPoints, req.MountPoint) {
+		return verifyfs.Report{}, ErrMountNotWritable
 	}
 
 	seed, err := c.seed()
