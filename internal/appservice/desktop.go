@@ -57,7 +57,7 @@ func NewLinuxDesktop(emit ProgressSink, emitRaw RawProgressSink) *Desktop {
 }
 
 func NewLinuxDesktopWithReportSaver(emit ProgressSink, emitRaw RawProgressSink, saver ReportSaver) *Desktop {
-	source := device.NewScanner()
+	source := newLinuxMountAwareSource(device.NewScanner())
 	desktop := NewDesktop(source, verifyfs.New(), emit)
 	rawControl := NewLinuxPrivilegedRawProbeController(source)
 	desktop.rawControl = rawControl
