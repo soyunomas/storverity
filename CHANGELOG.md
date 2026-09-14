@@ -6,6 +6,14 @@ The project follows [Semantic Versioning 2.0.0](https://semver.org/) and uses Gi
 
 ## [Unreleased]
 
+## [0.1.0-rc.3] - 2026-09-14
+
+### Fixed
+
+- Detect per-mount read/write state from `/proc/self/mountinfo` instead of relying only on the whole-device `RO` flag.
+- Prefer explicitly writable filesystem mounts when a device exposes multiple mounted partitions, preventing read-only helper volumes such as Ventoy's `VTOYEFI` partition from being selected by default.
+- Revalidate the selected mount as writable immediately before filesystem verification and reject read-only or stale mounts before creating temporary test data.
+
 ## [0.1.0-rc.2] - 2026-09-14
 
 ### Fixed
@@ -47,6 +55,7 @@ The project follows [Semantic Versioning 2.0.0](https://semver.org/) and uses Gi
 - Release blobs are signed with the GitHub Actions OIDC identity and verified before publication; no long-lived signing key is stored in the repository.
 - Ordinary CI never runs destructive tests against real block devices.
 
-[Unreleased]: https://github.com/soyunomas/storverity/compare/v0.1.0-rc.2...HEAD
+[Unreleased]: https://github.com/soyunomas/storverity/compare/v0.1.0-rc.3...HEAD
+[0.1.0-rc.3]: https://github.com/soyunomas/storverity/compare/v0.1.0-rc.2...v0.1.0-rc.3
 [0.1.0-rc.2]: https://github.com/soyunomas/storverity/releases/tag/v0.1.0-rc.2
 [0.1.0-rc.1]: https://github.com/soyunomas/storverity/tree/v0.1.0-rc.1
