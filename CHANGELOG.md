@@ -6,6 +6,22 @@ The project follows [Semantic Versioning 2.0.0](https://semver.org/) and uses Gi
 
 ## [Unreleased]
 
+### Added
+
+- Minimal root `storverity-helper` service for destructive raw probing over the system D-Bus.
+- Per-operation polkit authorization for raw capacity probes without elevating the Wails/WebKit desktop process.
+- Shared device identity/fingerprint helpers so the desktop and privileged service bind authorization to the same rediscoverable target metadata.
+- D-Bus caller/session-scoped cancellation and automatic cancellation when the desktop caller disconnects.
+- Hardened systemd unit plus D-Bus and polkit installation assets.
+- Tarball helper installer and `make helper-build` / `make helper-install` development targets.
+
+### Security
+
+- The privileged helper independently repeats device discovery, raw-test safety, fingerprint, path, and Linux `major:minor` validation before destructive I/O.
+- Device safety and identity are checked again after exclusive open and immediately before the first raw write, so a newly mounted, replaced, or reinserted target is rejected inside the root trust boundary.
+- Invalid raw-probe geometry is rejected before polkit authorization or block-device open.
+- The helper exposes only the high-level raw capacity probe rather than a generic privileged block-device read/write API.
+
 ## [0.1.0] - 2026-09-13
 
 ### Added
