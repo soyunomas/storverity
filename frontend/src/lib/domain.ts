@@ -7,7 +7,7 @@ export interface SafetyReason { code: string; severity: Severity; message: strin
 export interface RawTestDecision { allowed: boolean; reasons?: SafetyReason[] }
 export interface DeviceCard {
   id: string; path: string; displayName: string; vendor?: string; model?: string; serial?: string;
-  transport?: string; capacityBytes: number; mountPoints: string[]; fileSystems: string[];
+  transport?: string; capacityBytes: number; mountPoints: string[]; writableMountPoints: string[]; fileSystems: string[];
   readOnly: boolean; systemDisk: boolean; likelyExternal: boolean; rawTest: RawTestDecision;
 }
 export interface RegionCell { index: number; state: RegionState; message?: string }
@@ -37,7 +37,7 @@ export function safetyLabel(device: DeviceCard): string {
 }
 
 export function canVerifyFilesystem(device: DeviceCard | undefined): boolean {
-  return Boolean(device && device.likelyExternal && !device.systemDisk && !device.readOnly && device.mountPoints.length > 0);
+  return Boolean(device && device.likelyExternal && !device.systemDisk && !device.readOnly && device.writableMountPoints.length > 0);
 }
 
 export function createRegionCells(total: number): RegionCell[] {
