@@ -82,8 +82,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --verify-tag \
-            --title "StorVerity $VERSION" \
+          set -euo pipefail
+          args=(
+            --verify-tag
+            --title "StorVerity $VERSION"
             --generate-notes
+          )
+          if [[ "$VERSION" == *-* ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/* "${args[@]}"
