@@ -30,7 +30,7 @@ func (f *fakeVerifier) Run(_ context.Context, cfg verifyfs.Config, emit func(ver
 func TestVerificationControllerRefreshesIdentityAndRunsMountedExternalDevice(t *testing.T) {
 	source := fakeSource{devices: []device.Device{{
 		Path: "/dev/sdb", KernelName: "sdb", Type: "disk", Serial: "USB123", SizeBytes: 64_000,
-		LikelyExternal: true, MountPoints: []string{"/media/USB"},
+		LikelyExternal: true, MountPoints: []string{"/media/USB"}, WritableMountPoints: []string{"/media/USB"},
 	}}}
 	engine := &fakeVerifier{
 		report:   verifyfs.Report{BytesWritten: 128, BytesVerified: 128, Regions: 2},
@@ -69,10 +69,25 @@ func TestVerificationControllerRejectsStaleDevice(t *testing.T) {
 }
 
 func TestVerificationControllerRejectsStaleMount(t *testing.T) {
-	controller := NewVerificationController(fakeSource{devices: []device.Device{{Path: "/dev/sdb", KernelName: "sdb", Type: "disk", Serial: "USB123", SizeBytes: 1, LikelyExternal: true, MountPoints: []string{"/media/OTHER"}}}}, &fakeVerifier{})
+	controller := NewVerificationController(fakeSource{devices: []device.Device{{Path: "/dev/sdb", KernelName: "sdb", Type: "disk", Serial: "USB123", SizeBytes: 1, LikelyExternal: true, MountPoints: []string{"/media/OTHER"}, WritableMountPoints: []string{"/media/OTHER"}}}}, &fakeVerifier{})
 	_, err := controller.Run(context.Background(), VerificationRequest{DeviceID: "serial:USB123", MountPoint: "/media/USB", TotalBytes: 1, ChunkBytes: 1}, nil)
 	if !errors.Is(err, ErrMountNotFound) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestVerificationControllerRejectsNonWritableMount(t *testing.T) {
+	engine := &fakeVerifier{}
+	controller := NewVerificationController(fakeSource{devices: []device.Device{{
+		Path: "/dev/sdb", KernelName: "sdb", Type: "disk", Serial: "USB123", SizeBytes: 1,
+		LikelyExternal: true, MountPoints: []string{"/media/yo/VTOYEFI"},
+	}}}, engine)
+	_, err := controller.Run(context.Background(), VerificationRequest{DeviceID: "serial:USB123", MountPoint: "/media/yo/VTOYEFI", TotalBytes: 1, ChunkBytes: 1}, nil)
+	if !errors.Is(err, ErrMountNotWritable) {
+		t.Fatalf("err=%v", err)
+	}
+	if engine.calls != 0 {
+		t.Fatalf("engine calls=%d, want 0", engine.calls)
 	}
 }
 
@@ -94,7 +109,7 @@ func TestVerificationControllerRejectsProtectedTargets(t *testing.T) {
 func TestVerificationControllerPropagatesEngineError(t *testing.T) {
 	sentinel := errors.New("disk full")
 	engine := &fakeVerifier{err: sentinel}
-	controller := NewVerificationController(fakeSource{devices: []device.Device{{Path: "/dev/sdb", KernelName: "sdb", Type: "disk", SizeBytes: 1, LikelyExternal: true, MountPoints: []string{"/media/USB"}}}}, engine)
+	controller := NewVerificationController(fakeSource{devices: []device.Device{{Path: "/dev/sdb", KernelName: "sdb", Type: "disk", SizeBytes: 1, LikelyExternal: true, MountPoints: []string{"/media/USB"}, WritableMountPoints: []string{"/media/USB"}}}}, engine)
 	_, err := controller.Run(context.Background(), VerificationRequest{DeviceID: "kernel:sdb", MountPoint: "/media/USB", TotalBytes: 1, ChunkBytes: 1}, nil)
 	if !errors.Is(err, sentinel) {
 		t.Fatalf("err=%v", err)
