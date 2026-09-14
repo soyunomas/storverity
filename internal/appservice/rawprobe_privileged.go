@@ -27,6 +27,10 @@ func NewPrivilegedRawProbeController(devices DeviceSource, client PrivilegedRawP
 	}
 }
 
+func NewLinuxPrivilegedRawProbeController(devices DeviceSource) *PrivilegedRawProbeController {
+	return NewPrivilegedRawProbeController(devices, privhelper.NewSystemClient())
+}
+
 func (c *PrivilegedRawProbeController) Prepare(ctx context.Context, deviceID string) (RawProbeChallenge, error) {
 	if c == nil || c.confirmation == nil {
 		return RawProbeChallenge{}, errors.New("privileged raw probe controller is not configured")
