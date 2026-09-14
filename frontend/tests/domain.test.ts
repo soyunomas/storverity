@@ -7,7 +7,7 @@ import {
 
 const base: DeviceCard = {
   id: 'serial:1', path: '/dev/sdb', displayName: 'USB', capacityBytes: 64 * 1024 ** 3,
-  mountPoints: [], fileSystems: [], readOnly: false, systemDisk: false,
+  mountPoints: [], writableMountPoints: [], fileSystems: [], readOnly: false, systemDisk: false,
   likelyExternal: true, rawTest: { allowed: true },
 };
 
@@ -23,11 +23,12 @@ test('safetyLabel prioritises critical state', () => {
   assert.equal(safetyLabel({ ...base, rawTest: { allowed: false, reasons: [{ code: 'mounted', severity: 'deny', message: 'Mounted' }] } }), 'Mounted');
 });
 
-test('filesystem verification requires mounted external writable media', () => {
-  assert.equal(canVerifyFilesystem({ ...base, mountPoints: ['/media/USB'] }), true);
+test('filesystem verification requires a mounted external writable filesystem', () => {
+  assert.equal(canVerifyFilesystem({ ...base, mountPoints: ['/media/USB'], writableMountPoints: ['/media/USB'] }), true);
   assert.equal(canVerifyFilesystem(base), false);
-  assert.equal(canVerifyFilesystem({ ...base, mountPoints: ['/'], systemDisk: true }), false);
-  assert.equal(canVerifyFilesystem({ ...base, mountPoints: ['/media/USB'], likelyExternal: false }), false);
+  assert.equal(canVerifyFilesystem({ ...base, mountPoints: ['/media/USB'], writableMountPoints: [] }), false);
+  assert.equal(canVerifyFilesystem({ ...base, mountPoints: ['/'], writableMountPoints: ['/'], systemDisk: true }), false);
+  assert.equal(canVerifyFilesystem({ ...base, mountPoints: ['/media/USB'], writableMountPoints: ['/media/USB'], likelyExternal: false }), false);
 });
 
 test('region reducer creates immutable state transitions and stores failure detail', () => {
