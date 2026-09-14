@@ -3,7 +3,6 @@ package appservice
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -79,16 +78,26 @@ type RawProbeController struct {
 	challenges map[string]rawChallengeRecord
 }
 
-func NewRawProbeController(devices DeviceSource, engine RawProbeEngine, opener RawMediaOpener) *RawProbeController {
+func newRawProbeController(devices DeviceSource) *RawProbeController {
 	return &RawProbeController{
-		devices: devices, engine: engine, opener: opener, seed: randomSeed,
-		token: randomRawToken, now: time.Now, ttl: defaultRawChallengeTTL,
+		devices: devices,
+		seed:    randomSeed,
+		token:   randomRawToken,
+		now:     time.Now,
+		ttl:     defaultRawChallengeTTL,
 		challenges: make(map[string]rawChallengeRecord),
 	}
 }
 
+func NewRawProbeController(devices DeviceSource, engine RawProbeEngine, opener RawMediaOpener) *RawProbeController {
+	controller := newRawProbeController(devices)
+	controller.engine = engine
+	controller.opener = opener
+	return controller
+}
+
 func (c *RawProbeController) Prepare(ctx context.Context, selectedID string) (RawProbeChallenge, error) {
-	if c == nil || c.devices == nil || c.engine == nil || c.opener == nil {
+	if c == nil || c.devices == nil || c.token == nil || c.now == nil {
 		return RawProbeChallenge{}, errors.New("raw probe controller is not configured")
 	}
 	if strings.TrimSpace(selectedID) == "" {
@@ -130,26 +139,34 @@ func (c *RawProbeController) Prepare(ctx context.Context, selectedID string) (Ra
 	}, nil
 }
 
-func (c *RawProbeController) Run(ctx context.Context, req RawProbeRequest, emit func(RawProbeProgress)) (rawprobe.Report, error) {
-	if c == nil || c.devices == nil || c.engine == nil || c.opener == nil {
-		return rawprobe.Report{}, errors.New("raw probe controller is not configured")
+func (c *RawProbeController) authorizeRun(ctx context.Context, req RawProbeRequest) (device.Device, rawChallengeRecord, error) {
+	if c == nil || c.devices == nil {
+		return device.Device{}, rawChallengeRecord{}, errors.New("raw probe controller is not configured")
 	}
 	record, err := c.takeChallenge(req)
 	if err != nil {
-		return rawprobe.Report{}, err
+		return device.Device{}, rawChallengeRecord{}, err
 	}
-
-	// First refresh: the selection must still identify an eligible target before
-	// we ask the OS to open anything writable.
 	d, err := c.refreshDevice(ctx, req.DeviceID)
 	if err != nil {
-		return rawprobe.Report{}, err
+		return device.Device{}, rawChallengeRecord{}, err
 	}
 	if decision := safety.EvaluateRawTest(d); !decision.Allowed || strings.TrimSpace(d.MajorMinor) == "" {
-		return rawprobe.Report{}, ErrRawProbeProtected
+		return device.Device{}, rawChallengeRecord{}, ErrRawProbeProtected
 	}
 	if rawDeviceFingerprint(d) != record.fingerprint {
-		return rawprobe.Report{}, ErrRawProbeIdentity
+		return device.Device{}, rawChallengeRecord{}, ErrRawProbeIdentity
+	}
+	return d, record, nil
+}
+
+func (c *RawProbeController) Run(ctx context.Context, req RawProbeRequest, emit func(RawProbeProgress)) (rawprobe.Report, error) {
+	if c == nil || c.engine == nil || c.opener == nil || c.seed == nil {
+		return rawprobe.Report{}, errors.New("raw probe controller is not configured")
+	}
+	d, record, err := c.authorizeRun(ctx, req)
+	if err != nil {
+		return rawprobe.Report{}, err
 	}
 
 	media, err := c.opener.Open(d.Path, d.MajorMinor)
@@ -222,18 +239,14 @@ func (c *RawProbeController) refreshDevice(ctx context.Context, selectedID strin
 		return device.Device{}, fmt.Errorf("refresh devices: %w", err)
 	}
 	for _, d := range items {
-		if deviceID(d) == selectedID {
+		if device.ID(d) == selectedID {
 			return d, nil
 		}
 	}
 	return device.Device{}, ErrDeviceNotFound
 }
 
-func rawDeviceFingerprint(d device.Device) string {
-	h := sha256.New()
-	_, _ = fmt.Fprintf(h, "%s\x00%s\x00%s\x00%s\x00%d\x00%s\x00%s\x00%s", d.Path, d.KernelName, d.MajorMinor, d.Serial, d.SizeBytes, d.Vendor, d.Model, d.Transport)
-	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
-}
+func rawDeviceFingerprint(d device.Device) string { return device.Fingerprint(d) }
 
 func randomRawToken() (string, error) {
 	var buf [24]byte
