@@ -69,7 +69,7 @@ func mapDevice(d device.Device) DeviceCard {
 		filesystems = []string{}
 	}
 	return DeviceCard{
-		ID: deviceID(d), Path: d.Path, DisplayName: displayName(d), Vendor: d.Vendor, Model: d.Model, Serial: d.Serial,
+		ID: device.ID(d), Path: d.Path, DisplayName: displayName(d), Vendor: d.Vendor, Model: d.Model, Serial: d.Serial,
 		Transport: d.Transport, CapacityBytes: d.SizeBytes, MountPoints: mounts, FileSystems: filesystems,
 		ReadOnly: d.ReadOnly, SystemDisk: d.SystemDisk, LikelyExternal: d.LikelyExternal, RawTest: safety.EvaluateRawTest(d),
 	}
@@ -90,14 +90,4 @@ func displayName(d device.Device) string {
 		return p
 	}
 	return "Unknown storage device"
-}
-
-func deviceID(d device.Device) string {
-	if serial := strings.TrimSpace(d.Serial); serial != "" {
-		return "serial:" + serial
-	}
-	if kernel := strings.TrimSpace(d.KernelName); kernel != "" {
-		return "kernel:" + kernel
-	}
-	return "path:" + strings.TrimSpace(d.Path)
 }
