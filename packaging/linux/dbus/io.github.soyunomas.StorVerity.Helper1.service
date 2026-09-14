@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=io.github.soyunomas.StorVerity.Helper1
+Exec=/usr/libexec/storverity-helper
+User=root
+SystemdService=io.github.soyunomas.StorVerity.Helper1.service
