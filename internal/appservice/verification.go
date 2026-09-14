@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/soyunomas/storverity/internal/device"
 	"github.com/soyunomas/storverity/internal/verifyfs"
 )
 
@@ -62,7 +63,7 @@ func (c *VerificationController) Run(ctx context.Context, req VerificationReques
 
 	var selected *DeviceCard
 	for _, d := range devices {
-		if deviceID(d) == req.DeviceID {
+		if device.ID(d) == req.DeviceID {
 			card := mapDevice(d)
 			selected = &card
 			break
