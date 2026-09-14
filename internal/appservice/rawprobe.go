@@ -80,11 +80,11 @@ type RawProbeController struct {
 
 func newRawProbeController(devices DeviceSource) *RawProbeController {
 	return &RawProbeController{
-		devices: devices,
-		seed:    randomSeed,
-		token:   randomRawToken,
-		now:     time.Now,
-		ttl:     defaultRawChallengeTTL,
+		devices:    devices,
+		seed:       randomSeed,
+		token:      randomRawToken,
+		now:        time.Now,
+		ttl:        defaultRawChallengeTTL,
 		challenges: make(map[string]rawChallengeRecord),
 	}
 }
@@ -122,8 +122,10 @@ func (c *RawProbeController) Prepare(ctx context.Context, selectedID string) (Ra
 	expires := now.Add(ttl)
 	confirmation := "DESTROY DATA ON " + d.Path
 	record := rawChallengeRecord{
-		deviceID: selectedID, fingerprint: rawDeviceFingerprint(d),
-		confirmation: confirmation, expires: expires,
+		deviceID:     selectedID,
+		fingerprint:  rawDeviceFingerprint(d),
+		confirmation: confirmation,
+		expires:      expires,
 	}
 	c.mu.Lock()
 	for key, existing := range c.challenges {
@@ -134,8 +136,13 @@ func (c *RawProbeController) Prepare(ctx context.Context, selectedID string) (Ra
 	c.challenges[token] = record
 	c.mu.Unlock()
 	return RawProbeChallenge{
-		Token: token, DeviceID: selectedID, Path: d.Path, DisplayName: displayName(d),
-		CapacityBytes: d.SizeBytes, ConfirmationText: confirmation, ExpiresAtUnix: expires.Unix(),
+		Token:            token,
+		DeviceID:         selectedID,
+		Path:             d.Path,
+		DisplayName:      displayName(d),
+		CapacityBytes:    d.SizeBytes,
+		ConfirmationText: confirmation,
+		ExpiresAtUnix:    expires.Unix(),
 	}, nil
 }
 
