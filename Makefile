@@ -1,32 +1,34 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-APP_NAME        ?= storverity
-APP_META_PKG    ?= github.com/soyunomas/storverity/internal/appmeta
-FRONTEND_DIR    ?= frontend
-BUILD_DIR       ?= build/bin
-DIST_DIR        ?= dist
-COVERAGE_FILE   ?= coverage.out
-COVERAGE_HTML   ?= coverage.html
-GO_PACKAGES     ?= ./cmd/... ./internal/...
-GO_VERSION      ?= 1.25
-NODE_VERSION    ?= 22.16.0
-WAILS_VERSION   ?= v2.15.0
-WAILS_TAGS      ?= webkit2_41
-WAILS           ?= wails
-NPM             ?= npm
-GO              ?= go
-VERSION          ?= 0.1.0-dev
-COMMIT           ?= $(shell git rev-parse HEAD 2>/dev/null || printf unknown)
+APP_NAME         ?= storverity
+APP_META_PKG     ?= github.com/soyunomas/storverity/internal/appmeta
+FRONTEND_DIR     ?= frontend
+BUILD_DIR        ?= build/bin
+HELPER_BINARY    ?= $(BUILD_DIR)/storverity-helper
+DIST_DIR         ?= dist
+COVERAGE_FILE    ?= coverage.out
+COVERAGE_HTML    ?= coverage.html
+GO_PACKAGES      ?= ./cmd/... ./internal/...
+GO_VERSION       ?= 1.25
+NODE_VERSION     ?= 22.16.0
+WAILS_VERSION    ?= v2.15.0
+WAILS_TAGS       ?= webkit2_41
+WAILS            ?= wails
+NPM              ?= npm
+GO               ?= go
+VERSION           ?= 0.1.0-dev
+COMMIT            ?= $(shell git rev-parse HEAD 2>/dev/null || printf unknown)
 SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || printf 0)
-BUILD_DATE       ?= $(shell date -u -d '@$(SOURCE_DATE_EPOCH)' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || printf unknown)
-APP_LDFLAGS      = -X $(APP_META_PKG).Version=$(VERSION) -X $(APP_META_PKG).Commit=$(COMMIT) -X $(APP_META_PKG).BuildDate=$(BUILD_DATE)
+BUILD_DATE        ?= $(shell date -u -d '@$(SOURCE_DATE_EPOCH)' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || printf unknown)
+APP_LDFLAGS       = -X $(APP_META_PKG).Version=$(VERSION) -X $(APP_META_PKG).Commit=$(COMMIT) -X $(APP_META_PKG).BuildDate=$(BUILD_DATE)
 
 .PHONY: \
 	help info doctor bootstrap deps lock-update lock-check \
 	go-deps go-mod-check fmt fmt-check vet test test-rawprobe test-cover test-cover-html check-core run list \
 	frontend-install frontend-update frontend-lock-check frontend-audit frontend-test frontend-check frontend-build frontend-dev frontend-all \
 	wails-install wails-doctor linux-deps dev build desktop-dev desktop-build desktop-clean \
+	helper-build helper-install \
 	package-appimage package-tarball package release-checksums release \
 	check ci ci-go ci-frontend ci-desktop ci-package \
 	clean clean-coverage clean-frontend clean-packaging clean-all
@@ -42,7 +44,8 @@ help: ## Show this help message
 	@printf '  make doctor          Check the local toolchain\n'
 	@printf '  make bootstrap       Install pinned project dependencies\n'
 	@printf '  make check           Run core + frontend validation\n'
-	@printf '  make test-rawprobe   Run raw-probe tests without block-device access\n'
+	@printf '  make test-rawprobe   Run raw/helper tests without block-device access\n'
+	@printf '  make helper-build    Build the privileged Linux helper\n'
 	@printf '  make dev             Start the Wails development app\n'
 	@printf '  make package         Build AppImage + deterministic tarball\n'
 	@printf '  make ci              Run the full CI-equivalent validation\n\n'
@@ -55,6 +58,7 @@ info: ## Print project build configuration
 	@printf 'Source epoch:      %s\n' '$(SOURCE_DATE_EPOCH)'
 	@printf 'Go packages:       %s\n' '$(GO_PACKAGES)'
 	@printf 'Frontend:          %s\n' '$(FRONTEND_DIR)'
+	@printf 'Helper binary:     %s\n' '$(HELPER_BINARY)'
 	@printf 'Wails version:     %s\n' '$(WAILS_VERSION)'
 	@printf 'Wails build tags:  %s\n' '$(WAILS_TAGS)'
 	@printf 'Go baseline:       %s\n' '$(GO_VERSION)'
@@ -117,8 +121,8 @@ vet: ## Run go vet on the storage core and CLI
 test: ## Run race-enabled Go tests
 	$(GO) test -race $(GO_PACKAGES)
 
-test-rawprobe: ## Run raw-probe/safety tests without accessing real block devices
-	$(GO) test -race ./internal/rawprobe ./internal/safety ./internal/appservice
+test-rawprobe: ## Run raw-probe/helper/safety tests without accessing real block devices
+	$(GO) test -race ./internal/rawprobe ./internal/privhelper ./internal/safety ./internal/appservice
 
 test-cover: ## Run Go tests with coverage and print the coverage summary
 	$(GO) test -race -coverprofile=$(COVERAGE_FILE) $(GO_PACKAGES)
@@ -189,20 +193,29 @@ desktop-dev: ## Start the Wails desktop app in development mode
 desktop-build: ## Build a clean production desktop binary with embedded release metadata
 	SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' $(WAILS) build -clean -tags '$(WAILS_TAGS)' -ldflags '$(APP_LDFLAGS)'
 
-desktop-clean: ## Remove Wails desktop build output
+desktop-clean: ## Remove Wails desktop/helper build output
 	rm -rf $(BUILD_DIR)
+
+##@ Privileged helper
+
+helper-build: ## Build the Linux system D-Bus raw-probe helper
+	@mkdir -p '$(dir $(HELPER_BINARY))'
+	$(GO) build -trimpath -buildvcs=false -o '$(HELPER_BINARY)' ./cmd/storverity-helper
+
+helper-install: helper-build ## Install helper polkit/D-Bus/systemd files (requires sudo)
+	sudo bash scripts/install-helper.sh
 
 ##@ Packaging / release
 
 package-appimage: desktop-build ## Build the x86_64 AppImage from the production desktop binary
 	VERSION='$(VERSION)' ARCH=x86_64 DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-appimage.sh
 
-package-tarball: desktop-build ## Build a deterministic portable Linux tarball
-	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
+package-tarball: desktop-build helper-build ## Build a deterministic portable Linux tarball with helper assets
+	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' HELPER_BINARY='$(abspath $(HELPER_BINARY))' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
 
-package: desktop-build ## Build all Linux release packages and checksums
+package: desktop-build helper-build ## Build all Linux release packages and checksums
 	VERSION='$(VERSION)' ARCH=x86_64 DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-appimage.sh
-	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
+	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' HELPER_BINARY='$(abspath $(HELPER_BINARY))' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
 	$(MAKE) release-checksums DIST_DIR='$(DIST_DIR)'
 
 release-checksums: ## Write deterministic SHA-256 checksums for release artifacts
@@ -227,11 +240,11 @@ ci-go: fmt-check go-mod-check vet ## Run the Go CI checks including race + cover
 
 ci-frontend: frontend-install frontend-all ## Run the complete frontend CI job from package-lock.json
 
-ci-desktop: go-deps wails-install desktop-build ## Run the desktop smoke-build job (system packages must already exist)
+ci-desktop: go-deps wails-install desktop-build helper-build ## Run desktop/helper smoke builds (system packages must already exist)
 
-ci-package: ## Package an existing CI desktop binary as AppImage/tarball and verify checksums
+ci-package: helper-build ## Package existing CI binaries as AppImage/tarball and verify checksums
 	VERSION='$(VERSION)' ARCH=x86_64 DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-appimage.sh
-	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
+	VERSION='$(VERSION)' ARCH=x86_64 SOURCE_DATE_EPOCH='$(SOURCE_DATE_EPOCH)' HELPER_BINARY='$(abspath $(HELPER_BINARY))' DIST_DIR='$(abspath $(DIST_DIR))' bash scripts/package-tarball.sh
 	$(MAKE) release-checksums DIST_DIR='$(DIST_DIR)'
 	cd '$(DIST_DIR)' && sha256sum --check SHA256SUMS
 
