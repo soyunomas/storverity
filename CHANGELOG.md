@@ -6,6 +6,12 @@ The project follows [Semantic Versioning 2.0.0](https://semver.org/) and uses Gi
 
 ## [Unreleased]
 
+## [0.1.0-rc.2] - 2026-09-14
+
+### Fixed
+
+- Install the pinned Wails v2.15 CLI in the tagged release workflow before `make release`, fixing the `wails: command not found` failure that prevented `v0.1.0-rc.1` artifacts from being published.
+
 ## [0.1.0-rc.1] - 2026-09-14
 
 ### Added
@@ -41,5 +47,6 @@ The project follows [Semantic Versioning 2.0.0](https://semver.org/) and uses Gi
 - Release blobs are signed with the GitHub Actions OIDC identity and verified before publication; no long-lived signing key is stored in the repository.
 - Ordinary CI never runs destructive tests against real block devices.
 
-[Unreleased]: https://github.com/soyunomas/storverity/compare/v0.1.0-rc.1...HEAD
-[0.1.0-rc.1]: https://github.com/soyunomas/storverity/releases/tag/v0.1.0-rc.1
+[Unreleased]: https://github.com/soyunomas/storverity/compare/v0.1.0-rc.2...HEAD
+[0.1.0-rc.2]: https://github.com/soyunomas/storverity/releases/tag/v0.1.0-rc.2
+[0.1.0-rc.1]: https://github.com/soyunomas/storverity/tree/v0.1.0-rc.1
