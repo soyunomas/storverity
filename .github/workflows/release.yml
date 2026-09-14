@@ -47,6 +47,8 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "epoch=$epoch" >> "$GITHUB_OUTPUT"
           echo "build_date=$build_date" >> "$GITHUB_OUTPUT"
+      - name: Install pinned Wails CLI
+        run: make wails-install
       - name: Linux desktop dependencies
         run: make linux-deps
       - name: Validate source and build release artifacts
