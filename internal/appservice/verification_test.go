@@ -84,7 +84,7 @@ func TestVerificationControllerRejectsProtectedTargets(t *testing.T) {
 	}
 	for _, d := range tests {
 		controller := NewVerificationController(fakeSource{devices: []device.Device{d}}, &fakeVerifier{})
-		_, err := controller.Run(context.Background(), VerificationRequest{DeviceID: deviceID(d), MountPoint: d.MountPoints[0], TotalBytes: 1, ChunkBytes: 1}, nil)
+		_, err := controller.Run(context.Background(), VerificationRequest{DeviceID: device.ID(d), MountPoint: d.MountPoints[0], TotalBytes: 1, ChunkBytes: 1}, nil)
 		if !errors.Is(err, ErrTargetProtected) {
 			t.Fatalf("device=%+v err=%v", d, err)
 		}
